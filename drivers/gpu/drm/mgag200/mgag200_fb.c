@@ -292,22 +292,19 @@ int mgag200_fbdev_init(struct mga_device *mdev)
 
 	ret = drm_fb_helper_single_add_all_connectors(&mfbdev->helper);
 	if (ret)
-		goto err_fb_setup;
+		goto fini;
 
 	/* disable all the possible outputs/crtcs before entering KMS mode */
 	drm_helper_disable_unused_functions(mdev->dev);
 
 	ret = drm_fb_helper_initial_config(&mfbdev->helper, bpp_sel);
 	if (ret)
-		goto err_fb_setup;
+		goto fini;
 
 	return 0;
 
-err_fb_setup:
+fini:
 	drm_fb_helper_fini(&mfbdev->helper);
-err_fb_helper:
-	mdev->mfbdev = NULL;
-
 	return ret;
 }
 
