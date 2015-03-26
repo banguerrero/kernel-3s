@@ -192,37 +192,18 @@ void ftrace_likely_update(struct ftrace_branch_data *f, int val, int expect);
 
 #include <uapi/linux/types.h>
 
-#define __READ_ONCE_SIZE						\
-({									\
-	switch (size) {							\
-	case 1: *(__u8 *)res = *(volatile __u8 *)p; break;		\
-	case 2: *(__u16 *)res = *(volatile __u16 *)p; break;		\
-	case 4: *(__u32 *)res = *(volatile __u32 *)p; break;		\
-	case 8: *(__u64 *)res = *(volatile __u64 *)p; break;		\
-	default:							\
-		barrier();						\
-		__builtin_memcpy((void *)res, (const void *)p, size);	\
-		barrier();						\
-	}								\
-})
-
-static __always_inline
-void __read_once_size(const volatile void *p, void *res, int size)
+static __always_inline void __read_once_size(const volatile void *p, void *res, int size)
 {
-	__READ_ONCE_SIZE;
-}
-
-#ifdef CONFIG_KASAN
-/*
- * This function is not 'inline' because __no_sanitize_address confilcts
- * with inlining. Attempt to inline it may cause a build failure.
- * 	https://gcc.gnu.org/bugzilla/show_bug.cgi?id=67368
- * '__maybe_unused' allows us to avoid defined-but-not-used warnings.
- */
-static __no_sanitize_address __maybe_unused
-void __read_once_size_nocheck(const volatile void *p, void *res, int size)
-{
-	__READ_ONCE_SIZE;
+	switch (size) {
+	case 1: *(__u8 *)res = *(volatile __u8 *)p; break;
+	case 2: *(__u16 *)res = *(volatile __u16 *)p; break;
+	case 4: *(__u32 *)res = *(volatile __u32 *)p; break;
+	case 8: *(__u64 *)res = *(volatile __u64 *)p; break;
+	default:
+		barrier();
+		__builtin_memcpy((void *)res, (const void *)p, size);
+		barrier();
+	}
 }
 #else
 static __always_inline
