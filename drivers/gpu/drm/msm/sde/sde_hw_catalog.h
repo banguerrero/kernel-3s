@@ -17,7 +17,6 @@
 #include <linux/bug.h>
 #include <linux/bitmap.h>
 #include <linux/err.h>
-#include <drm/drmP.h>
 
 #define MAX_BLOCKS    8
 #define MAX_LAYERS    12
@@ -38,11 +37,6 @@
 #define SDE_HW_VER_171	SDE_HW_VER(1, 7, 1) /* 8996 v2.0 */
 #define SDE_HW_VER_172	SDE_HW_VER(1, 7, 2) /* 8996 v3.0 */
 #define SDE_HW_VER_300	SDE_HW_VER(3, 0, 0) /* cobalt v1.0 */
-
-#define MAX_IMG_WIDTH 0x3fff
-#define MAX_IMG_HEIGHT 0x3fff
-
-#define CRTC_DUAL_MIXERS	2
 
 /**
  * MDP TOP BLOCK features
@@ -69,10 +63,10 @@ enum {
 /**
  * SSPP sub-blocks/features
  * @SDE_SSPP_SRC             Src and fetch part of the pipes,
- * @SDE_SSPP_SCALER_QSEED2,  QSEED2 algorithm support
- * @SDE_SSPP_SCALER_QSEED3,  QSEED3 alogorithm support
- * @SDE_SSPP_SCALER_RGB,     RGB Scaler, supported by RGB pipes
- * @SDE_SSPP_CSC,            Support of Color space converion
+ * @SDE_SSPP_SCALAR_QSEED2,  QSEED2 algorithm support
+ * @SDE_SSPP_SCALAR_QSEED3,  QSEED3 algorithm support
+ * @SDE_SSPP_SCALAR_RGB,     RGB Scalar, supported by RGB pipes
+ * @SDE_SSPP_CSC,            Support of Color space conversion
  * @SDE_SSPP_PA_V1,          Common op-mode register for PA blocks
  * @SDE_SSPP_HIST_V1         Histogram programming method V1
  * @SDE_SSPP_IGC,            Inverse gamma correction
@@ -82,9 +76,9 @@ enum {
  */
 enum {
 	SDE_SSPP_SRC = 0x1,
-	SDE_SSPP_SCALER_QSEED2,
-	SDE_SSPP_SCALER_QSEED3,
-	SDE_SSPP_SCALER_RGB,
+	SDE_SSPP_SCALAR_QSEED2,
+	SDE_SSPP_SCALAR_QSEED3,
+	SDE_SSPP_SCALAR_RGB,
 	SDE_SSPP_CSC,
 	SDE_SSPP_PA_V1, /* Common op-mode register for PA blocks */
 	SDE_SSPP_HIST_V1,
@@ -147,18 +141,6 @@ enum {
 };
 
 /**
- * CTL sub-blocks
- * @SDE_CTL_SPLIT_DISPLAY       CTL supports video mode split display
- * @SDE_CTL_PINGPONG_SPLIT      CTL supports pingpong split
- * @SDE_CTL_MAX
- */
-enum {
-	SDE_CTL_SPLIT_DISPLAY = 0x1,
-	SDE_CTL_PINGPONG_SPLIT,
-	SDE_CTL_MAX
-};
-
-/**
  * WB sub-blocks and features
  * @SDE_WB_LINE_MODE        Writeback module supports line/linear mode
  * @SDE_WB_BLOCK_MODE       Writeback module supports block mode read
@@ -172,7 +154,6 @@ enum {
  * @SDE_WB_UBWC_1_0,        Writeback Universal bandwidth compression 1.0
  *                          support
  * @SDE_WB_WBWC_1_5         UBWC 1.5 support
- * @SDE_WB_YUV_CONFIG       Writeback supports output of YUV colorspace
  * @SDE_WB_MAX              maximum value
  */
 enum {
@@ -185,7 +166,6 @@ enum {
 	SDE_WB_DITHER,
 	SDE_WB_TRAFFIC_SHAPER,
 	SDE_WB_UBWC_1_0,
-	SDE_WB_YUV_CONFIG,
 	SDE_WB_MAX
 };
 
@@ -198,7 +178,7 @@ enum {
 #define SDE_HW_BLK_INFO \
 	u32 id; \
 	u32 base; \
-	unsigned long features; \
+	unsigned long features
 
 /**
  * MACRO SDE_HW_SUBBLK_INFO - information of HW sub-block inside SDE
@@ -221,10 +201,10 @@ struct sde_src_blk {
 };
 
 /**
- * struct sde_scaler_blk: Scaler information
+ * struct sde_scalar_info: Scalar information
  * @info:   HW register and features supported by this sub-blk
  */
-struct sde_scaler_blk {
+struct sde_scalar_blk {
 	SDE_HW_SUBBLK_INFO;
 };
 
@@ -243,17 +223,6 @@ struct sde_pp_blk {
 };
 
 /**
- * struct sde_format_extended - define sde specific pixel format+modifier
- * @fourcc_format: Base FOURCC pixel format code
- * @modifier: 64-bit drm format modifier, same modifier must be applied to all
- *            framebuffer planes
- */
-struct sde_format_extended {
-	uint32_t fourcc_format;
-	uint64_t modifier;
-};
-
-/**
  * struct sde_sspp_sub_blks : SSPP sub-blocks
  * @maxdwnscale: max downscale ratio supported(without DECIMATION)
  * @maxupscale:  maxupscale ratio supported
@@ -261,12 +230,11 @@ struct sde_format_extended {
  * @danger_lut:  LUT to generate danger signals
  * @safe_lut:    LUT to generate safe signals
  * @src_blk:
- * @scaler_blk:
+ * @scalar_blk:
  * @csc_blk:
  * @pa_blk:
  * @hist_lut:
  * @pcc_blk:
- * @format_list: Pointer to list of supported formats
  */
 struct sde_sspp_sub_blks {
 	u32 maxlinewidth;
@@ -274,16 +242,12 @@ struct sde_sspp_sub_blks {
 	u32 safe_lut;
 	u32 maxdwnscale;
 	u32 maxupscale;
-	u32 maxhdeciexp; /* max decimation is 2^value */
-	u32 maxvdeciexp; /* max decimation is 2^value */
 	struct sde_src_blk src_blk;
-	struct sde_scaler_blk scaler_blk;
+	struct sde_scalar_blk scalar_blk;
 	struct sde_pp_blk csc_blk;
 	struct sde_pp_blk pa_blk;
 	struct sde_pp_blk hist_lut;
 	struct sde_pp_blk pcc_blk;
-
-	const struct sde_format_extended *format_list;
 };
 
 /**
@@ -318,10 +282,6 @@ struct sde_wb_sub_blocks {
 	u32 maxlinewidth;
 };
 
-struct sde_mdss_base_cfg {
-	SDE_HW_BLK_INFO;
-};
-
 /* struct sde_mdp_cfg : MDP TOP-BLK instance info
  * @id:                index identifying this block
  * @base:              register base offset to mdss
@@ -347,12 +307,10 @@ struct sde_ctl_cfg {
  * @id:                index identifying this block
  * @base               register offset of this block
  * @features           bit mask identifying sub-blocks/features
- * @name               source pipe name
- * @sblk:              SSPP sub-blocks information
+ * @sblk:              Sub-blocks of SSPP
  */
 struct sde_sspp_cfg {
 	SDE_HW_BLK_INFO;
-	const char *name;
 	const struct sde_sspp_sub_blks *sblk;
 };
 
@@ -361,17 +319,11 @@ struct sde_sspp_cfg {
  * @id:                index identifying this block
  * @base               register offset of this block
  * @features           bit mask identifying sub-blocks/features
- * @sblk:              LM Sub-blocks information
- * @dspp:              ID of connected DSPP, DSPP_MAX if unsupported
- * @pingpong:          ID of connected PingPong, PINGPONG_MAX if unsupported
- * @lm_pair_mask:      Bitmask of LMs that can be controlled by same CTL
+ * @sblk:              Sub-blocks of SSPP
  */
 struct sde_lm_cfg {
 	SDE_HW_BLK_INFO;
 	const struct sde_lm_sub_blks *sblk;
-	u32 dspp;
-	u32 pingpong;
-	unsigned long lm_pair_mask;
 };
 
 /**
@@ -404,13 +356,13 @@ struct sde_pingpong_cfg  {
  * @id                 enum identifying this block
  * @base               register offset of this block
  * @features           bit mask identifying sub-blocks/features
- * @intf_connect       Bitmask of INTF IDs this CDM can connect to
- * @wb_connect:        Bitmask of Writeback IDs this CDM can connect to
+ * @intf_connect       Connects to which interfaces
+ * @wb_connect:        Connects to which writebacks
  */
 struct sde_cdm_cfg   {
 	SDE_HW_BLK_INFO;
-	unsigned long intf_connect;
-	unsigned long wb_connect;
+	u32 intf_connect[MAX_BLOCKS];
+	u32 wb_connect[MAX_BLOCKS];
 };
 
 /**
@@ -419,14 +371,10 @@ struct sde_cdm_cfg   {
  * @base               register offset of this block
  * @features           bit mask identifying sub-blocks/features
  * @type:              Interface type(DSI, DP, HDMI)
- * @controller_id:     Controller Instance ID in case of multiple of intf type
- * @prog_fetch_lines_worst_case	Worst case latency num lines needed to prefetch
  */
 struct sde_intf_cfg  {
 	SDE_HW_BLK_INFO;
 	u32 type;   /* interface type*/
-	u32 controller_id;
-	u32 prog_fetch_lines_worst_case;
 };
 
 /**
@@ -434,13 +382,10 @@ struct sde_intf_cfg  {
  * @id                 enum identifying this block
  * @base               register offset of this block
  * @features           bit mask identifying sub-blocks/features
- * @sblk               sub-block information
- * @format_list: Pointer to list of supported formats
  */
 struct sde_wb_cfg {
 	SDE_HW_BLK_INFO;
-	const struct sde_wb_sub_blocks *sblk;
-	const struct sde_format_extended *format_list;
+	struct sde_wb_sub_blocks *sblk;
 };
 
 /**
@@ -454,31 +399,6 @@ struct sde_ad_cfg {
 };
 
 /**
- * struct sde_vp_sub_blks - Virtual Plane sub-blocks
- * @list                    list for virtual plane tracking items
- * @sspp_id                 SSPP ID, refer to enum sde_sspp.
- */
-struct sde_vp_sub_blks {
-	struct list_head list;
-	u32 sspp_id;
-};
-
-/**
- * struct sde_vp_cfg - information of Virtual Plane SW blocks
- * @id                 enum identifying this block
- * @sub_blks           list head for virtual plane sub blocks
- * @plane_type         plane type, such as primary, overlay or cursor
- * @display_type       which display the plane bound to, such as primary,
- *                     secondary or tertiary
- */
-struct sde_vp_cfg {
-	u32 id;
-	struct list_head sub_blks;
-	const char *plane_type;
-	const char *display_type;
-};
-
-/**
  * struct sde_mdss_cfg - information of MDSS HW
  * This is the main catalog data structure representing
  * this HW version. Contains number of instances,
@@ -486,9 +406,6 @@ struct sde_vp_cfg {
  */
 struct sde_mdss_cfg {
 	u32 hwversion;
-
-	u32 mdss_count;
-	struct sde_mdss_base_cfg mdss[MAX_BLOCKS];
 
 	u32 mdp_count;
 	struct sde_mdp_cfg mdp[MAX_BLOCKS];
@@ -519,9 +436,6 @@ struct sde_mdss_cfg {
 
 	u32 ad_count;
 	struct sde_ad_cfg ad[MAX_BLOCKS];
-
-	u32 vp_count;
-	struct sde_vp_cfg vp[MAX_LAYERS];
 	/* Add additional block data structures here */
 };
 
@@ -549,8 +463,6 @@ struct sde_mdss_hw_cfg_handler {
 #define BLK_AD(s) ((s)->ad)
 
 struct sde_mdss_cfg *sde_mdss_cfg_170_init(u32 step);
-struct sde_mdss_cfg *sde_hw_catalog_init(struct drm_device *dev, u32 major,
-	u32 minor, u32 step);
-void sde_hw_catalog_deinit(struct sde_mdss_cfg *cfg);
+struct sde_mdss_cfg *sde_hw_catalog_init(u32 major, u32 minor, u32 step);
 
 #endif /* _SDE_HW_CATALOG_H */

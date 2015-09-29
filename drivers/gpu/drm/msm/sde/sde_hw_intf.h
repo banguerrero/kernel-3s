@@ -15,7 +15,6 @@
 
 #include "sde_hw_catalog.h"
 #include "sde_hw_mdss.h"
-#include "sde_hw_util.h"
 
 struct sde_hw_intf;
 
@@ -62,11 +61,11 @@ struct intf_status {
  */
 struct sde_hw_intf_ops {
 	void (*setup_timing_gen)(struct sde_hw_intf *intf,
-			const struct intf_timing_params *p,
-			const struct sde_format *fmt);
+			struct intf_timing_params *p,
+			struct sde_mdp_format_params *fmt);
 
 	void (*setup_prg_fetch)(struct sde_hw_intf *intf,
-			const struct intf_prog_fetch *fetch);
+			struct intf_prog_fetch *fetch);
 
 	void (*enable_timing)(struct sde_hw_intf *intf,
 			u8 enable);
@@ -85,7 +84,6 @@ struct sde_hw_intf {
 	/* intf */
 	enum sde_intf idx;
 	const struct sde_intf_cfg *cap;
-	const struct sde_mdss_cfg *mdss;
 
 	/* ops */
 	struct sde_hw_intf_ops ops;
@@ -101,11 +99,5 @@ struct sde_hw_intf {
 struct sde_hw_intf *sde_hw_intf_init(enum sde_intf idx,
 		void __iomem *addr,
 		struct sde_mdss_cfg *m);
-
-/**
- * sde_hw_intf_destroy(): Destroys INTF driver context
- * @intf:   Pointer to INTF driver context
- */
-void sde_hw_intf_destroy(struct sde_hw_intf *intf);
 
 #endif /*_SDE_HW_INTF_H */

@@ -16,46 +16,13 @@
 #include <linux/kernel.h>
 #include <linux/err.h>
 
-#include "msm_drv.h"
-
-#define SDE_NONE                        0
-
-#ifndef SDE_CSC_MATRIX_COEFF_SIZE
 #define SDE_CSC_MATRIX_COEFF_SIZE	9
-#endif
-
-#ifndef SDE_CSC_CLAMP_SIZE
 #define SDE_CSC_CLAMP_SIZE		6
-#endif
-
-#ifndef SDE_CSC_BIAS_SIZE
 #define SDE_CSC_BIAS_SIZE		3
-#endif
 
-#ifndef SDE_MAX_PLANES
 #define SDE_MAX_PLANES			4
-#endif
-
-#define SDE_MAX_PIPES_PER_STAGE		2
-
-#define SDE_FORMAT_FLAG_YUV		(1 << 0)
-
-#define SDE_FORMAT_IS_YUV(X)		((X)->flag & SDE_FORMAT_FLAG_YUV)
-#define SDE_FORMAT_IS_LINEAR(X)		((X)->fetch_mode == SDE_FETCH_LINEAR)
-#define SDE_FORMAT_IS_UBWC(X)		((X)->fetch_mode == SDE_FETCH_UBWC)
-
-enum sde_hw_blk_type {
-	SDE_HW_BLK_TOP = 0,
-	SDE_HW_BLK_SSPP,
-	SDE_HW_BLK_LM,
-	SDE_HW_BLK_DSPP,
-	SDE_HW_BLK_CTL,
-	SDE_HW_BLK_CDM,
-	SDE_HW_BLK_PINGPONG,
-	SDE_HW_BLK_INTF,
-	SDE_HW_BLK_WB,
-	SDE_HW_BLK_MAX,
-};
+#define PIPES_PER_STAGE			2
+#define VALID_ROT_WB_FORMAT		BIT(0)
 
 enum sde_mdp {
 	MDP_TOP = 0x1,
@@ -90,7 +57,7 @@ enum sde_sspp_type {
 };
 
 enum sde_lm {
-	LM_0 = 1,
+	LM_0 = 0,
 	LM_1,
 	LM_2,
 	LM_3,
@@ -112,7 +79,7 @@ enum sde_stage {
 	SDE_STAGE_MAX
 };
 enum sde_dspp {
-	DSPP_0 = 1,
+	DSPP_0 = 0,
 	DSPP_1,
 	DSPP_2,
 	DSPP_3,
@@ -120,7 +87,7 @@ enum sde_dspp {
 };
 
 enum sde_ctl {
-	CTL_0 = 1,
+	CTL_0 = 0,
 	CTL_1,
 	CTL_2,
 	CTL_3,
@@ -129,23 +96,22 @@ enum sde_ctl {
 };
 
 enum sde_cdm {
-	CDM_0 = 1,
+	CDM_0 = 0,
 	CDM_1,
 	CDM_MAX
 };
 
 enum sde_pingpong {
-	PINGPONG_0 = 1,
+	PINGPONG_0 = 0,
 	PINGPONG_1,
 	PINGPONG_2,
 	PINGPONG_3,
 	PINGPONG_4,
-	PINGPONG_S0,
 	PINGPONG_MAX
 };
 
 enum sde_intf {
-	INTF_0 = 1,
+	INTF_0 = 0,
 	INTF_1,
 	INTF_2,
 	INTF_3,
@@ -161,10 +127,7 @@ enum sde_intf_type {
 	INTF_HDMI = 0x3,
 	INTF_LCDC = 0x5,
 	INTF_EDP = 0x9,
-	INTF_TYPE_MAX,
-
-	/* virtual interfaces */
-	INTF_WB = 0x100,
+	INTF_TYPE_MAX
 };
 
 enum sde_intf_mode {
@@ -190,40 +153,8 @@ enum sde_ad {
 	AD_MAX
 };
 
-enum sde_cwb {
-	CWB_0 = 0x1,
-	CWB_1,
-	CWB_2,
-	CWB_3,
-	CWB_MAX
-};
-
-enum sde_wd_timer {
-	WD_TIMER_0 = 0x1,
-	WD_TIMER_1,
-	WD_TIMER_2,
-	WD_TIMER_3,
-	WD_TIMER_4,
-	WD_TIMER_5,
-	WD_TIMER_MAX
-};
-
-enum sde_vbif {
-	VBIF_0,
-	VBIF_1,
-	VBIF_MAX,
-	VBIF_RT = VBIF_0,
-	VBIF_NRT = VBIF_1
-};
-
-enum sde_iommu_domain {
-	SDE_IOMMU_DOMAIN_UNSECURE,
-	SDE_IOMMU_DOMAIN_SECURE,
-	SDE_IOMMU_DOMAIN_MAX
-};
-
 /**
- * SDE HW,Component order color map
+ * MDP HW,Component order color map
  */
 enum {
 	C0_G_Y = 0,
@@ -233,41 +164,43 @@ enum {
 };
 
 /**
- * enum sde_plane_type - defines how the color component pixel packing
- * @SDE_PLANE_INTERLEAVED   : Color components in single plane
- * @SDE_PLANE_PLANAR        : Color component in separate planes
- * @SDE_PLANE_PSEUDO_PLANAR : Chroma components interleaved in separate plane
+ * enum sde_mdp_plane_type - defines how the color component pixel packing
+ * @SDE_MDP_PLANE_INTERLEAVED   : Color components in single plane
+ * @SDE_MDP_PLANE_PLANAR        : Color component in separate planes
+ * @SDE_MDP_PLANE_PSEUDO_PLANAR : Chroma components interleaved in separate
+ *                                plane
  */
-enum sde_plane_type {
-	SDE_PLANE_INTERLEAVED,
-	SDE_PLANE_PLANAR,
-	SDE_PLANE_PSEUDO_PLANAR,
+enum sde_mdp_plane_type {
+	SDE_MDP_PLANE_INTERLEAVED,
+	SDE_MDP_PLANE_PLANAR,
+	SDE_MDP_PLANE_PSEUDO_PLANAR,
 };
 
 /**
- * enum sde_chroma_samp_type - chroma sub-samplng type
- * @SDE_CHROMA_RGB   : No chroma subsampling
- * @SDE_CHROMA_H2V1  : Chroma pixels are horizontally subsampled
- * @SDE_CHROMA_H1V2  : Chroma pixels are vertically subsampled
- * @SDE_CHROMA_420   : 420 subsampling
+ * enum sde_mdp_chroma_samp_type - chroma sub-samplng type
+ * @SDE_MDP_CHROMA_RGB   : no chroma subsampling
+ * @SDE_MDP_CHROMA_H2V1  : chroma pixels are horizontally subsampled
+ * @SDE_MDP_CHROMA_H1V2  : chroma pixels are vertically subsampled
+ * @SDE_MDP_CHROMA_420   : 420 subsampling
  */
-enum sde_chroma_samp_type {
-	SDE_CHROMA_RGB,
-	SDE_CHROMA_H2V1,
-	SDE_CHROMA_H1V2,
-	SDE_CHROMA_420
+enum sde_mdp_chroma_samp_type {
+	SDE_MDP_CHROMA_RGB,
+	SDE_MDP_CHROMA_H2V1,
+	SDE_MDP_CHROMA_H1V2,
+	SDE_MDP_CHROMA_420
 };
 
 /**
- * sde_fetch_type - Defines How SDE HW fetches data
- * @SDE_FETCH_LINEAR   : fetch is line by line
- * @SDE_FETCH_TILE     : fetches data in Z order from a tile
- * @SDE_FETCH_UBWC     : fetch and decompress data
+ * enum sde_mdp_fetch_type - format id, used by drm-driver only to map drm forcc
+ * Defines How MDP HW fetches data
+ * @SDE_MDP_FETCH_LINEAR   : fetch is line by line
+ * @SDE_MDP_FETCH_TILE     : fetches data in Z order from a tile
+ * @SDE_MDP_FETCH_UBWC     : fetch and decompress data
  */
-enum sde_fetch_type {
-	SDE_FETCH_LINEAR,
-	SDE_FETCH_TILE,
-	SDE_FETCH_UBWC
+enum sde_mdp_fetch_type {
+	SDE_MDP_FETCH_LINEAR,
+	SDE_MDP_FETCH_TILE,
+	SDE_MDP_FETCH_UBWC
 };
 
 /**
@@ -275,12 +208,12 @@ enum sde_fetch_type {
  * expected by the HW programming.
  */
 enum {
+	COLOR_4BIT,
+	COLOR_5BIT,
+	COLOR_6BIT,
+	COLOR_8BIT,
 	COLOR_ALPHA_1BIT = 0,
 	COLOR_ALPHA_4BIT = 1,
-	COLOR_4BIT = 0,
-	COLOR_5BIT = 1, /* No 5-bit Alpha */
-	COLOR_6BIT = 2, /* 6-Bit Alpha also = 2 */
-	COLOR_8BIT = 3, /* 8-Bit Alpha also = 3 */
 };
 
 enum sde_alpha_blend_type {
@@ -291,83 +224,55 @@ enum sde_alpha_blend_type {
 	ALPHA_MAX
 };
 
-/**
- * enum sde_3d_blend_mode
- * Desribes how the 3d data is blended
- * @BLEND_3D_NONE      : 3d blending not enabled
- * @BLEND_3D_FRAME_INT : Frame interleaving
- * @BLEND_3D_H_ROW_INT : Horizontal row interleaving
- * @BLEND_3D_V_ROW_INT : vertical row interleaving
- * @BLEND_3D_COL_INT   : column interleaving
- * @BLEND_3D_MAX       :
- */
-enum sde_3d_blend_mode {
-	BLEND_3D_NONE = 0,
-	BLEND_3D_FRAME_INT,
-	BLEND_3D_H_ROW_INT,
-	BLEND_3D_V_ROW_INT,
-	BLEND_3D_COL_INT,
-	BLEND_3D_MAX
+struct addr_info {
+	u32 plane[SDE_MAX_PLANES];
 };
 
-/** struct sde_format - defines the format configuration which
- * allows SDE HW to correctly fetch and decode the format
- * @base: base msm_format struture containing fourcc code
- * @fetch_planes: how the color components are packed in pixel format
- * @element: element color ordering
- * @bits: element bit widths
- * @chroma_sample: chroma sub-samplng type
- * @unpack_align_msb: unpack aligned, 0 to LSB, 1 to MSB
- * @unpack_tight: 0 for loose, 1 for tight
- * @unpack_count: 0 = 1 component, 1 = 2 component
- * @bpp: bytes per pixel
- * @alpha_enable: whether the format has an alpha channel
- * @num_planes: number of planes (including meta data planes)
- * @fetch_mode: linear, tiled, or ubwc hw fetch behavior
- * @is_yuv: is format a yuv variant
- * @flag: usage bit flags
- * @tile_width: format tile width
- * @tile_height: format tile height
+/**
+ * struct sde_mdp_format_params - defines the format configuration which
+ * allows MDP HW to correctly fetch and decode the format
+ * @format : format id, used by drm-driver only to map drm forcc
+ * @flag
+ * @chroma_sample
+ * @fetch_planes
+ * @unpack_align_msb
+ * @unpack_tight
+ * @unpack_count
+ * @bpp
+ * @alpha_enable
+ * @fetch_mode
+ * @bits
+ * @element
  */
-struct sde_format {
-	struct msm_format base;
-	enum sde_plane_type fetch_planes;
+struct sde_mdp_format_params {
+	u32 format;
+	enum sde_mdp_plane_type fetch_planes;
 	u8 element[SDE_MAX_PLANES];
 	u8 bits[SDE_MAX_PLANES];
-	enum sde_chroma_samp_type chroma_sample;
-	u8 unpack_align_msb;
-	u8 unpack_tight;
-	u8 unpack_count;
-	u8 bpp;
-	u8 alpha_enable;
-	u8 num_planes;
-	enum sde_fetch_type fetch_mode;
+	enum sde_mdp_chroma_samp_type chroma_sample;
+	u8 unpack_align_msb;	/* 0 to LSB, 1 to MSB */
+	u8 unpack_tight;	/* 0 for loose, 1 for tight */
+	u8 unpack_count;	/* 0 = 1 component, 1 = 2 component ... */
+	u8 bpp;                 /* Bytes per pixel */
+	u8 alpha_enable;	/*  source has alpha */
+	enum sde_mdp_fetch_type fetch_mode;
+	u8 is_yuv;
 	u32 flag;
-	u16 tile_width;
-	u16 tile_height;
 };
-#define to_sde_format(x) container_of(x, struct sde_format, base)
 
 /**
- * struct sde_hw_fmt_layout - format information of the source pixel data
- * @format: pixel format parameters
- * @num_planes: number of planes (including meta data planes)
- * @width: image width
- * @height: image height
- * @total_size: total size in bytes
- * @plane_addr: address of each plane
- * @plane_size: length of each plane
- * @plane_pitch: pitch of each plane
+ * struct sde_hw_source_info - format information of the source pixel data
+ * @format : pixel format parameters
+ * @width : image width @height: image height
+ * @num_planes : number of planes including the meta data planes for the
+ * compressed formats @plane: per plane information
  */
-struct sde_hw_fmt_layout {
-	const struct sde_format *format;
-	uint32_t num_planes;
-	uint32_t width;
-	uint32_t height;
-	uint32_t total_size;
-	uint32_t plane_addr[SDE_MAX_PLANES];
-	uint32_t plane_size[SDE_MAX_PLANES];
-	uint32_t plane_pitch[SDE_MAX_PLANES];
+struct sde_hw_source_info {
+	struct sde_mdp_format_params *format;
+	u32 width;
+	u32 height;
+	u32 num_planes;
+	u32 ystride[SDE_MAX_PLANES];
 };
 
 struct sde_rect {
@@ -391,7 +296,6 @@ struct sde_hw_blend_cfg {
 };
 
 struct sde_csc_cfg {
-	/* matrix coefficients in S15.16 format */
 	uint32_t csc_mv[SDE_CSC_MATRIX_COEFF_SIZE];
 	uint32_t csc_pre_bv[SDE_CSC_BIAS_SIZE];
 	uint32_t csc_post_bv[SDE_CSC_BIAS_SIZE];
@@ -412,19 +316,5 @@ struct sde_mdss_color {
 	u32 color_2;
 	u32 color_3;
 };
-
-/*
- * Define bit masks for h/w logging.
- */
-#define SDE_DBG_MASK_NONE     (1 << 0)
-#define SDE_DBG_MASK_CDM      (1 << 1)
-#define SDE_DBG_MASK_DSPP     (1 << 2)
-#define SDE_DBG_MASK_INTF     (1 << 3)
-#define SDE_DBG_MASK_LM       (1 << 4)
-#define SDE_DBG_MASK_CTL      (1 << 5)
-#define SDE_DBG_MASK_PINGPONG (1 << 6)
-#define SDE_DBG_MASK_SSPP     (1 << 7)
-#define SDE_DBG_MASK_WB       (1 << 8)
-#define SDE_DBG_MASK_TOP      (1 << 9)
 
 #endif  /* _SDE_HW_MDSS_H */

@@ -59,7 +59,7 @@ struct msm_rd_state;
 struct msm_perf_state;
 struct msm_gem_submit;
 
-#define NUM_DOMAINS    6    /* four for KMS, then two for GPU */
+#define NUM_DOMAINS    2    /* one for KMS, then one per gpu core (?) */
 #define MAX_CRTCS      8
 #define MAX_PLANES     12
 #define MAX_ENCODERS   8
@@ -142,8 +142,6 @@ struct msm_drm_private {
 	unsigned int num_crtcs;
 	struct drm_crtc *crtcs[MAX_CRTCS];
 
-	struct msm_drm_commit disp_thread[MAX_CRTCS];
-
 	unsigned int num_encoders;
 	struct drm_encoder *encoders[MAX_ENCODERS];
 
@@ -152,11 +150,6 @@ struct msm_drm_private {
 
 	unsigned int num_connectors;
 	struct drm_connector *connectors[MAX_CONNECTORS];
-
-	/* Properties */
-	struct drm_property *plane_property[PLANE_PROP_COUNT];
-	struct drm_property *crtc_property[CRTC_PROP_COUNT];
-	struct drm_property *conn_property[CONNECTOR_PROP_COUNT];
 
 	/* Properties */
 	struct drm_property *plane_property[PLANE_PROP_MAX_NUM];

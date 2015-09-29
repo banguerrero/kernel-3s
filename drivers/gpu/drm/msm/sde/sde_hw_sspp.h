@@ -15,8 +15,8 @@
 
 #include "sde_hw_catalog.h"
 #include "sde_hw_mdss.h"
-#include "sde_hw_util.h"
-#include "sde_formats.h"
+#include "sde_mdp_formats.h"
+#include "sde_hw_mdp_util.h"
 
 struct sde_hw_pipe;
 
@@ -28,39 +28,19 @@ struct sde_hw_pipe;
 #define SDE_SSPP_FLIP_UD	 0x4
 #define SDE_SSPP_SOURCE_ROTATED_90 0x8
 #define SDE_SSPP_ROT_90  0x10
-#define SDE_SSPP_SOLID_FILL 0x20
-
-/**
- * Define all scaler feature bits in catalog
- */
-#define SDE_SSPP_SCALER ((1UL << SDE_SSPP_SCALER_RGB) | \
-	(1UL << SDE_SSPP_SCALER_QSEED2) | \
-	(1UL << SDE_SSPP_SCALER_QSEED3))
-
-/**
- * Component indices
- */
-enum {
-	SDE_SSPP_COMP_0,
-	SDE_SSPP_COMP_1_2,
-	SDE_SSPP_COMP_2,
-	SDE_SSPP_COMP_3,
-
-	SDE_SSPP_COMP_MAX
-};
 
 enum {
-	SDE_FRAME_LINEAR,
-	SDE_FRAME_TILE_A4X,
-	SDE_FRAME_TILE_A5X,
+	SDE_MDP_FRAME_LINEAR,
+	SDE_MDP_FRAME_TILE_A4X,
+	SDE_MDP_FRAME_TILE_A5X,
 };
 
 enum sde_hw_filter {
-	SDE_SCALE_FILTER_NEAREST = 0,
-	SDE_SCALE_FILTER_BIL,
-	SDE_SCALE_FILTER_PCMN,
-	SDE_SCALE_FILTER_CA,
-	SDE_SCALE_FILTER_MAX
+	SDE_MDP_SCALE_FILTER_NEAREST = 0,
+	SDE_MDP_SCALE_FILTER_BIL,
+	SDE_MDP_SCALE_FILTER_PCMN,
+	SDE_MDP_SCALE_FILTER_CA,
+	SDE_MDP_SCALE_FILTER_MAX
 };
 
 struct sde_hw_sharp_cfg {
@@ -108,7 +88,6 @@ struct sde_hw_pixel_ext {
 	int btm_rpt[SDE_MAX_PLANES];
 
 	uint32_t roi_w[SDE_MAX_PLANES];
-	uint32_t roi_h[SDE_MAX_PLANES];
 
 	/*
 	 * Filter type to be used for scaling in horizontal and vertical
@@ -119,13 +98,9 @@ struct sde_hw_pixel_ext {
 
 };
 
-struct sde_hw_scaler3_cfg {
-	uint32_t filter_mode;
-};
-
 /**
  * struct sde_hw_pipe_cfg : Pipe description
- * @layout:    format layout information for programming buffer to hardware
+ * @src:       source surface information
  * @src_rect:  src ROI, caller takes into account the different operations
  *             such as decimation, flip etc to program this field
  * @dest_rect: destination ROI.
@@ -135,13 +110,15 @@ struct sde_hw_scaler3_cfg {
  *              4: Read 1 line/pixel drop 3  lines/pixels
  *              8: Read 1 line/pixel drop 7 lines/pixels
  *              16: Read 1 line/pixel drop 15 line/pixels
+ * @addr:      source surface address
  */
 struct sde_hw_pipe_cfg {
-	struct sde_hw_fmt_layout layout;
+	struct sde_hw_source_info src;
 	struct sde_rect src_rect;
 	struct sde_rect dst_rect;
 	u8 horz_decimation;
 	u8 vert_decimation;
+	struct addr_info addr;
 };
 
 /**
@@ -161,13 +138,14 @@ struct danger_safe_cfg {
  */
 struct sde_hw_sspp_ops {
 	/**
-	 * setup_format - setup pixel format cropping rectangle, flip
+	 * setup_sourceformat - setup pixel format cropping rectangle, flip
 	 * @ctx: Pointer to pipe context
 	 * @cfg: Pointer to pipe config structure
-	 * @flags: Extra flags for format config
+	 * @flags: Format flags
 	 */
-	void (*setup_format)(struct sde_hw_pipe *ctx,
-			const struct sde_format *fmt, u32 flags);
+	void (*setup_sourceformat)(struct sde_hw_pipe *ctx,
+			struct sde_hw_pipe_cfg *cfg,
+			u32 flags);
 
 	/**
 	 * setup_rects - setup pipe ROI rectangles
@@ -192,7 +170,8 @@ struct sde_hw_sspp_ops {
 	 * @ctx: Pointer to pipe context
 	 * @data: Pointer to config structure
 	 */
-	void (*setup_csc)(struct sde_hw_pipe *ctx, struct sde_csc_cfg *data);
+	void (*setup_csc)(struct sde_hw_pipe *ctx,
+			struct sde_csc_cfg *data);
 
 	/**
 	 * setup_solidfill - enable/disable colorfill
@@ -200,7 +179,9 @@ struct sde_hw_sspp_ops {
 	 * @const_color: Fill color value
 	 * @flags: Pipe flags
 	 */
-	void (*setup_solidfill)(struct sde_hw_pipe *ctx, u32 color);
+	void (*setup_solidfill)(struct sde_hw_pipe *ctx,
+			u32 const_color,
+			u32 flags);
 
 	/**
 	 * setup_sharpening - setup sharpening
@@ -275,18 +256,11 @@ struct sde_hw_pipe {
  * Should be called once before accessing every pipe.
  * @idx:  Pipe index for which driver object is required
  * @addr: Mapped register io address of MDP
- * @catalog : Pointer to mdss catalog data
+ * @m:    pointer to mdss catalog data @ops:
  */
 struct sde_hw_pipe *sde_hw_sspp_init(enum sde_sspp idx,
 			void __iomem *addr,
-			struct sde_mdss_cfg *catalog);
-
-/**
- * sde_hw_sspp_destroy(): Destroys SSPP driver context
- * should be called during Hw pipe cleanup.
- * @ctx:  Pointer to SSPP driver context returned by sde_hw_sspp_init
- */
-void sde_hw_sspp_destroy(struct sde_hw_pipe *ctx);
+			struct sde_mdss_cfg *m);
 
 #endif /*_SDE_HW_SSPP_H */
 

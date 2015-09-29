@@ -13,7 +13,7 @@
 #ifndef _SDE_HWIO_H
 #define _SDE_HWIO_H
 
-#include "sde_hw_util.h"
+#include "sde_hw_mdp_util.h"
 
 /**
  * MDP TOP block Register and bit fields and defines
@@ -28,9 +28,6 @@
 #define HIST_INTR_EN                    0x01c
 #define HIST_INTR_STATUS                0x020
 #define HIST_INTR_CLEAR                 0x024
-#define INTF_INTR_EN                    0x1C0
-#define INTF_INTR_STATUS                0x1C4
-#define INTF_INTR_CLEAR                 0x1C8
 #define SPLIT_DISPLAY_EN                0x2F4
 #define SPLIT_DISPLAY_UPPER_PIPE_CTRL   0x2F8
 #define DSPP_IGC_COLOR0_RAM_LUTN        0x300

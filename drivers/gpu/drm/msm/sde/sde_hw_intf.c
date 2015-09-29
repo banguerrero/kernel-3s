@@ -70,12 +70,10 @@ static struct sde_intf_cfg *_intf_offset(enum sde_intf intf,
 	int i;
 
 	for (i = 0; i < m->intf_count; i++) {
-		if ((intf == m->intf[i].id) &&
-		(m->intf[i].type != INTF_NONE)) {
+		if (intf == m->intf[i].id) {
 			b->base_off = addr;
 			b->blk_off = m->intf[i].base;
 			b->hwversion = m->hwversion;
-			b->log_mask = SDE_DBG_MASK_INTF;
 			return &m->intf[i];
 		}
 	}
@@ -84,8 +82,8 @@ static struct sde_intf_cfg *_intf_offset(enum sde_intf intf,
 }
 
 static void sde_hw_intf_setup_timing_engine(struct sde_hw_intf *ctx,
-		const struct intf_timing_params *p,
-		const struct sde_format *fmt)
+		struct intf_timing_params *p,
+		struct sde_mdp_format_params *fmt)
 {
 	struct sde_hw_blk_reg_map *c = &ctx->hw;
 	u32 hsync_period, vsync_period;
@@ -148,36 +146,48 @@ static void sde_hw_intf_setup_timing_engine(struct sde_hw_intf *ctx,
 	display_hctl = (hsync_end_x << 16) | hsync_start_x;
 
 	den_polarity = 0;
-	hsync_polarity = p->hsync_polarity;
-	vsync_polarity = p->vsync_polarity;
+	if (ctx->cap->type == INTF_HDMI) {
+		hsync_polarity = p->yres >= 720 ? 0 : 1;
+		vsync_polarity = p->yres >= 720 ? 0 : 1;
+	} else {
+		hsync_polarity = 0;
+		vsync_polarity = 0;
+	}
 	polarity_ctl = (den_polarity << 2) | /*  DEN Polarity  */
 		(vsync_polarity << 1) | /* VSYNC Polarity */
 		(hsync_polarity << 0);  /* HSYNC Polarity */
 
-	if (!SDE_FORMAT_IS_YUV(fmt))
-		panel_format = (fmt->bits[C0_G_Y] |
-				(fmt->bits[C1_B_Cb] << 2) |
-				(fmt->bits[C2_R_Cr] << 4) |
+	if (!fmt->is_yuv)
+		panel_format = (fmt->bits[0] |
+				(fmt->bits[1] << 2) |
+				(fmt->bits[2] << 4) |
 				(0x21 << 8));
 	 else
-		/* Interface treats all the pixel data in RGB888 format */
-		panel_format = (COLOR_8BIT |
+	/* Interface treats all the pixel data in RGB888 format */
+		panel_format |= (COLOR_8BIT      |
 				(COLOR_8BIT << 2) |
 				(COLOR_8BIT << 4) |
 				(0x21 << 8));
 
 	SDE_REG_WRITE(c, INTF_HSYNC_CTL, hsync_ctl);
-	SDE_REG_WRITE(c, INTF_VSYNC_PERIOD_F0, vsync_period * hsync_period);
+	SDE_REG_WRITE(c, INTF_VSYNC_PERIOD_F0,
+			vsync_period * hsync_period);
 	SDE_REG_WRITE(c, INTF_VSYNC_PULSE_WIDTH_F0,
 			p->vsync_pulse_width * hsync_period);
 	SDE_REG_WRITE(c, INTF_DISPLAY_HCTL, display_hctl);
-	SDE_REG_WRITE(c, INTF_DISPLAY_V_START_F0, display_v_start);
-	SDE_REG_WRITE(c, INTF_DISPLAY_V_END_F0, display_v_end);
+	SDE_REG_WRITE(c, INTF_DISPLAY_V_START_F0,
+			display_v_start);
+	SDE_REG_WRITE(c, INTF_DISPLAY_V_END_F0,
+			display_v_end);
 	SDE_REG_WRITE(c, INTF_ACTIVE_HCTL,  active_hctl);
-	SDE_REG_WRITE(c, INTF_ACTIVE_V_START_F0, active_v_start);
-	SDE_REG_WRITE(c, INTF_ACTIVE_V_END_F0, active_v_end);
+	SDE_REG_WRITE(c, INTF_ACTIVE_V_START_F0,
+			active_v_start);
+	SDE_REG_WRITE(c, INTF_ACTIVE_V_END_F0,
+			active_v_end);
+
 	SDE_REG_WRITE(c, INTF_BORDER_COLOR, p->border_clr);
-	SDE_REG_WRITE(c, INTF_UNDERFLOW_COLOR, p->underflow_clr);
+	SDE_REG_WRITE(c, INTF_UNDERFLOW_COLOR,
+			p->underflow_clr);
 	SDE_REG_WRITE(c, INTF_HSYNC_SKEW, p->hsync_skew);
 	SDE_REG_WRITE(c, INTF_POLARITY_CTL, polarity_ctl);
 	SDE_REG_WRITE(c, INTF_FRAME_LINE_COUNT_EN, 0x3);
@@ -190,13 +200,23 @@ static void sde_hw_intf_enable_timing_engine(
 		u8 enable)
 {
 	struct sde_hw_blk_reg_map *c = &intf->hw;
-	/* Note: Display interface select is handled in top block hw layer */
-	SDE_REG_WRITE(c, INTF_TIMING_ENGINE_EN, enable != 0);
+	u32 intf_sel;
+
+	/* Display interface select */
+	if (enable) {
+		intf_sel = SDE_REG_READ(c, DISP_INTF_SEL);
+
+		intf_sel |= (intf->cap->type << ((intf->idx) * 8));
+		SDE_REG_WRITE(c, DISP_INTF_SEL,  intf_sel);
+	}
+
+	SDE_REG_WRITE(c, INTF_TIMING_ENGINE_EN,
+			enable & 0x1);
 }
 
 static void sde_hw_intf_setup_prg_fetch(
 		struct sde_hw_intf *intf,
-		const struct intf_prog_fetch *fetch)
+		struct intf_prog_fetch *fetch)
 {
 	struct sde_hw_blk_reg_map *c = &intf->hw;
 	int fetch_enable;
@@ -334,9 +354,8 @@ struct sde_hw_intf *sde_hw_intf_init(enum sde_intf idx,
 		return ERR_PTR(-ENOMEM);
 
 	cfg = _intf_offset(idx, m, addr, &c->hw);
-	if (IS_ERR_OR_NULL(cfg)) {
+	if (!cfg) {
 		kfree(c);
-		pr_err("failed to create sde_hw_intf %d\n", idx);
 		return ERR_PTR(-EINVAL);
 	}
 
@@ -345,7 +364,6 @@ struct sde_hw_intf *sde_hw_intf_init(enum sde_intf idx,
 	 */
 	c->idx = idx;
 	c->cap = cfg;
-	c->mdss = m;
 	_setup_intf_ops(&c->ops, c->cap->features);
 
 	/*
@@ -353,9 +371,3 @@ struct sde_hw_intf *sde_hw_intf_init(enum sde_intf idx,
 	 */
 	return c;
 }
-
-void sde_hw_intf_destroy(struct sde_hw_intf *intf)
-{
-	kfree(intf);
-}
-

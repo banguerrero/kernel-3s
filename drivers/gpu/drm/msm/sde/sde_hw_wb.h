@@ -15,16 +15,12 @@
 
 #include "sde_hw_catalog.h"
 #include "sde_hw_mdss.h"
-#include "sde_hw_top.h"
-#include "sde_hw_util.h"
+#include "sde_hw_mdp_util.h"
 
 struct sde_hw_wb;
 
 struct sde_hw_wb_cfg {
-	struct sde_hw_fmt_layout dest;
-	enum sde_intf_mode intf_mode;
-	struct traffic_shaper_cfg ts_cfg;
-	bool is_secure;
+	struct sde_hw_source_info dest;
 };
 
 /**
@@ -60,9 +56,8 @@ struct sde_hw_wb_ops {
  * @struct sde_hw_blk_reg_map *hw;
  * @idx
  * @wb_hw_caps
+ * @mixer_hw_caps
  * @ops
- * @highest_bank_bit: GPU highest memory bank bit used
- * @hw_mdp: MDP top level hardware block
  */
 struct sde_hw_wb {
 	/* base */
@@ -74,28 +69,17 @@ struct sde_hw_wb {
 
 	/* ops */
 	struct sde_hw_wb_ops ops;
-
-	u32 highest_bank_bit;
-
-	struct sde_hw_mdp *hw_mdp;
 };
 
 /**
- * sde_hw_wb_init(): Initializes and return writeback hw driver object.
+ * sde_hw_wb_init(): Initializes the wb_path hw driver object.
+ * should be called before accessing every mixer.
  * @idx:  wb_path index for which driver object is required
  * @addr: mapped register io address of MDP
  * @m :   pointer to mdss catalog data
- * @hw_mdp: pointer to mdp top hw driver object
  */
 struct sde_hw_wb *sde_hw_wb_init(enum sde_wb idx,
 		void __iomem *addr,
-		struct sde_mdss_cfg *m,
-		struct sde_hw_mdp *hw_mdp);
-
-/**
- * sde_hw_wb_destroy(): Destroy writeback hw driver object.
- * @hw_wb:  Pointer to writeback hw driver object
- */
-void sde_hw_wb_destroy(struct sde_hw_wb *hw_wb);
+		struct sde_mdss_cfg *m);
 
 #endif /*_SDE_HW_WB_H */

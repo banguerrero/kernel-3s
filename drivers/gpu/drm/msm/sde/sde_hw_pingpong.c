@@ -48,7 +48,6 @@ static struct sde_pingpong_cfg *_pingpong_offset(enum sde_pingpong pp,
 			b->base_off = addr;
 			b->blk_off = m->pingpong[i].base;
 			b->hwversion = m->hwversion;
-			b->log_mask = SDE_DBG_MASK_PINGPONG;
 			return &m->pingpong[i];
 		}
 	}
@@ -116,14 +115,10 @@ int sde_hw_pp_get_vsync_info(struct sde_hw_pingpong *pp,
 		struct sde_hw_pp_vsync_info *info)
 {
 	struct sde_hw_blk_reg_map *c = &pp->hw;
-	u32 val;
 
-	val = SDE_REG_READ(c, PP_VSYNC_INIT_VAL);
-	info->init_val = val & 0xffff;
-
-	val = SDE_REG_READ(c, PP_INT_COUNT_VAL);
-	info->vsync_count = (val & 0xffff0000) >> 16;
-	info->line_count = val & 0xffff;
+	info->init_val = SDE_REG_READ(c, PP_VSYNC_INIT_VAL) & 0xffff;
+	info->vsync_count = SDE_REG_READ(c, PP_SYNC_CONFIG_HEIGHT) & 0xffff;
+	info->line_count = SDE_REG_READ(c, PP_INT_COUNT_VAL) & 0xffff;
 
 	return 0;
 }
@@ -160,9 +155,4 @@ struct sde_hw_pingpong *sde_hw_pingpong_init(enum sde_pingpong idx,
 	_setup_pingpong_ops(&c->ops, c->pingpong_hw_cap->features);
 
 	return c;
-}
-
-void sde_hw_pingpong_destroy(struct sde_hw_pingpong *pp)
-{
-	kfree(pp);
 }

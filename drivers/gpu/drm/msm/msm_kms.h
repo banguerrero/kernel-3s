@@ -82,24 +82,4 @@ struct msm_kms *mdp4_kms_init(struct drm_device *dev) { return NULL; };
 struct msm_kms *mdp5_kms_init(struct drm_device *dev);
 struct msm_kms *sde_kms_init(struct drm_device *dev);
 
-/**
- * Mode Set Utility Functions
- */
-static inline bool msm_is_mode_seamless(const struct drm_display_mode *mode)
-{
-	return (mode->flags & DRM_MODE_FLAG_SEAMLESS);
-}
-
-static inline bool msm_is_mode_dynamic_fps(const struct drm_display_mode *mode)
-{
-	return ((mode->flags & DRM_MODE_FLAG_SEAMLESS) &&
-		(mode->private_flags & MSM_MODE_FLAG_SEAMLESS_DYNAMIC_FPS));
-}
-
-static inline bool msm_needs_vblank_pre_modeset(
-		const struct drm_display_mode *mode)
-{
-	return (mode->private_flags & MSM_MODE_FLAG_VBLANK_PRE_MODESET);
-}
-
 #endif /* __MSM_KMS_H__ */
