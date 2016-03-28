@@ -3016,16 +3016,6 @@ static void si_apply_state_adjust_rules(struct radeon_device *rdev,
 	    rdev->pdev->revision == 0x81)
 		max_mclk = 120000;
 
-	if (rps->vce_active) {
-		rps->evclk = rdev->pm.dpm.vce_states[rdev->pm.dpm.vce_level].evclk;
-		rps->ecclk = rdev->pm.dpm.vce_states[rdev->pm.dpm.vce_level].ecclk;
-		si_get_vce_clock_voltage(rdev, rps->evclk, rps->ecclk,
-					 &min_vce_voltage);
-	} else {
-		rps->evclk = 0;
-		rps->ecclk = 0;
-	}
-
 	if ((rdev->pm.dpm.new_active_crtc_count > 1) ||
 	    ni_dpm_vblank_too_short(rdev))
 		disable_mclk_switching = true;
