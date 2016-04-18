@@ -3193,7 +3193,7 @@ void intel_ddi_get_config(struct intel_encoder *encoder,
 		dev_priv->vbt.edp_bpp = pipe_config->pipe_bpp;
 	}
 
-	intel_ddi_clock_get(encoder, pipe_config);
+	hsw_ddi_clock_get(encoder, pipe_config);
 }
 
 static bool intel_ddi_compute_config(struct intel_encoder *encoder,
