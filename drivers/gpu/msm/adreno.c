@@ -2212,8 +2212,6 @@ static int adreno_soft_reset(struct kgsl_device *device)
 			adreno_support_64bit(adreno_dev))
 		gpudev->enable_64bit(adreno_dev);
 
-	/* Restore physical performance counter values after soft reset */
-	adreno_perfcounter_restore(adreno_dev);
 
 	/* Reinitialize the GPU */
 	gpudev->start(adreno_dev);
@@ -2239,6 +2237,9 @@ static int adreno_soft_reset(struct kgsl_device *device)
 		device->reset_counter++;
 		set_bit(ADRENO_DEVICE_STARTED, &adreno_dev->priv);
 	}
+
+	/* Restore physical performance counter values after soft reset */
+	adreno_perfcounter_restore(adreno_dev);
 
 	return ret;
 }
