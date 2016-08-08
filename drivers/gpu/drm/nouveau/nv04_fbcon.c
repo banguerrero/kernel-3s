@@ -82,7 +82,6 @@ nv04_fbcon_imageblit(struct fb_info *info, const struct fb_image *image)
 	uint32_t fg;
 	uint32_t bg;
 	uint32_t dsize;
-	uint32_t width;
 	uint32_t *data = (uint32_t *)image->data;
 	int ret;
 
@@ -92,9 +91,6 @@ nv04_fbcon_imageblit(struct fb_info *info, const struct fb_image *image)
 	ret = RING_SPACE(chan, 8);
 	if (ret)
 		return ret;
-
-	width = ALIGN(image->width, 8);
-	dsize = ALIGN(width * image->height, 32) >> 5;
 
 	if (info->fix.visual == FB_VISUAL_TRUECOLOR ||
 	    info->fix.visual == FB_VISUAL_DIRECTCOLOR) {
@@ -112,6 +108,7 @@ nv04_fbcon_imageblit(struct fb_info *info, const struct fb_image *image)
 	OUT_RING(chan, bg);
 	OUT_RING(chan, fg);
 <<<<<<< HEAD
+<<<<<<< HEAD
 	OUT_RING(chan, (image->height << 16) | image->width);
 	OUT_RING(chan, (image->height << 16) | image->width);
 	OUT_RING(chan, (image->dy << 16) | (image->dx & 0xffff));
@@ -123,6 +120,13 @@ nv04_fbcon_imageblit(struct fb_info *info, const struct fb_image *image)
 	OUT_RING(chan, (image->dy << 16) | (image->dx & 0xffff));
 
 >>>>>>> 84c279d... Squashed revert of DRM changes
+=======
+	OUT_RING(chan, (image->height << 16) | image->width);
+	OUT_RING(chan, (image->height << 16) | image->width);
+	OUT_RING(chan, (image->dy << 16) | (image->dx & 0xffff));
+
+	dsize = ALIGN(image->width * image->height, 32) >> 5;
+>>>>>>> 3ca605a... drm: backport drm changes from 4.4 kernel to 3.18.
 	while (dsize) {
 		int iter_len = dsize > 128 ? 128 : dsize;
 

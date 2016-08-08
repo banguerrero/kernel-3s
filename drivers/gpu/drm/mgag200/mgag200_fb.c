@@ -290,18 +290,13 @@ int mgag200_fbdev_init(struct mga_device *mdev)
 	if (ret)
 		goto err_fb_helper;
 
-<<<<<<< HEAD
 	ret = drm_fb_helper_single_add_all_connectors(&mfbdev->helper);
 	if (ret)
 		goto err_fb_setup;
-=======
-	drm_fb_helper_single_add_all_connectors(&mfbdev->helper);
->>>>>>> 84c279d... Squashed revert of DRM changes
 
 	/* disable all the possible outputs/crtcs before entering KMS mode */
 	drm_helper_disable_unused_functions(mdev->dev);
 
-<<<<<<< HEAD
 	ret = drm_fb_helper_initial_config(&mfbdev->helper, bpp_sel);
 	if (ret)
 		goto err_fb_setup;
@@ -314,11 +309,6 @@ err_fb_helper:
 	mdev->mfbdev = NULL;
 
 	return ret;
-=======
-	drm_fb_helper_initial_config(&mfbdev->helper, bpp_sel);
-
-	return 0;
->>>>>>> 84c279d... Squashed revert of DRM changes
 }
 
 void mgag200_fbdev_fini(struct mga_device *mdev)

@@ -2,7 +2,7 @@
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
- * Copyright (c) 2014,2017 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -72,10 +72,15 @@ int adreno_hw_init(struct msm_gpu *gpu)
 			(1 << 27));
 
 	/* Setup ringbuffer address: */
-	adreno_gpu_write(adreno_gpu, REG_ADRENO_CP_RB_BASE,
-			lower_32_bits(gpu->rb_iova));
-	adreno_gpu_write(adreno_gpu, REG_ADRENO_CP_RB_BASE_HI,
-			upper_32_bits(gpu->rb_iova));
+	adreno_gpu_write(adreno_gpu, REG_ADRENO_CP_RB_BASE, gpu->rb_iova);
+	adreno_gpu_write(adreno_gpu, REG_ADRENO_CP_RB_RPTR_ADDR,
+			rbmemptr(adreno_gpu, rptr));
+
+	/* Setup scratch/timestamp: */
+	adreno_gpu_write(adreno_gpu, REG_ADRENO_SCRATCH_ADDR,
+			rbmemptr(adreno_gpu, fence));
+
+	adreno_gpu_write(adreno_gpu, REG_ADRENO_SCRATCH_UMSK, 0x1);
 
 	return 0;
 }
@@ -149,12 +154,56 @@ int adreno_submit(struct msm_gpu *gpu, struct msm_gem_submit *submit,
 		}
 	}
 
-	OUT_PKT7(ring, CP_WAIT_FOR_IDLE, 0);
-	OUT_PKT7(ring, CP_EVENT_WRITE, 4);
-	OUT_RING(ring, CACHE_FLUSH_TS | (1 << 31));
-	OUT_RING(ring, lower_32_bits(rbmemptr(adreno_gpu, fence)));
-	OUT_RING(ring, upper_32_bits(rbmemptr(adreno_gpu, fence)));
+	/* on a320, at least, we seem to need to pad things out to an
+	 * even number of qwords to avoid issue w/ CP hanging on wrap-
+	 * around:
+	 */
+	if (ibs % 2)
+		OUT_PKT2(ring);
+
+	OUT_PKT0(ring, REG_AXXX_CP_SCRATCH_REG2, 1);
 	OUT_RING(ring, submit->fence);
+
+	if (adreno_is_a3xx(adreno_gpu) || adreno_is_a4xx(adreno_gpu)) {
+		/* Flush HLSQ lazy updates to make sure there is nothing
+		 * pending for indirect loads after the timestamp has
+		 * passed:
+		 */
+		OUT_PKT3(ring, CP_EVENT_WRITE, 1);
+		OUT_RING(ring, HLSQ_FLUSH);
+
+		OUT_PKT3(ring, CP_WAIT_FOR_IDLE, 1);
+		OUT_RING(ring, 0x00000000);
+	}
+
+	OUT_PKT3(ring, CP_EVENT_WRITE, 3);
+	OUT_RING(ring, CACHE_FLUSH_TS);
+	OUT_RING(ring, rbmemptr(adreno_gpu, fence));
+	OUT_RING(ring, submit->fence);
+
+	/* we could maybe be clever and only CP_COND_EXEC the interrupt: */
+	OUT_PKT3(ring, CP_INTERRUPT, 1);
+	OUT_RING(ring, 0x80000000);
+
+	/* Workaround for missing irq issue on 8x16/a306.  Unsure if the
+	 * root cause is a platform issue or some a306 quirk, but this
+	 * keeps things humming along:
+	 */
+	if (adreno_is_a306(adreno_gpu)) {
+		OUT_PKT3(ring, CP_WAIT_FOR_IDLE, 1);
+		OUT_RING(ring, 0x00000000);
+		OUT_PKT3(ring, CP_INTERRUPT, 1);
+		OUT_RING(ring, 0x80000000);
+	}
+
+#if 0
+	if (adreno_is_a3xx(adreno_gpu)) {
+		/* Dummy set-constant to trigger context rollover */
+		OUT_PKT3(ring, CP_SET_CONSTANT, 2);
+		OUT_RING(ring, CP_REG(REG_A3XX_HLSQ_CL_KERNEL_GROUP_X_REG));
+		OUT_RING(ring, 0x00000000);
+	}
+#endif
 
 	gpu->funcs->flush(gpu);
 
@@ -168,6 +217,7 @@ void adreno_flush(struct msm_gpu *gpu)
 
 	/* ensure writes to ringbuffer have hit system memory: */
 	mb();
+
 	adreno_gpu_write(adreno_gpu, REG_ADRENO_CP_RB_WPTR, wptr);
 }
 
@@ -255,6 +305,18 @@ void adreno_dump(struct msm_gpu *gpu)
 	struct adreno_gpu *adreno_gpu = to_adreno_gpu(gpu);
 	int i;
 
+	for (i = 0; i < 8; i++) {
+		printk("CP_SCRATCH_REG%d: %u\n", i,
+			gpu_read(gpu, REG_AXXX_CP_SCRATCH_REG0 + i));
+	}
+}
+
+/* would be nice to not have to duplicate the _show() stuff with printk(): */
+void adreno_dump(struct msm_gpu *gpu)
+{
+	struct adreno_gpu *adreno_gpu = to_adreno_gpu(gpu);
+	int i;
+
 	/* dump these out in a form that can be parsed by demsm: */
 	pr_info("IO:region %s 00000000 00020000\n", gpu->name);
 	for (i = 0; adreno_gpu->registers[i] != ~0; i += 2) {
@@ -329,7 +391,7 @@ int adreno_gpu_init(struct drm_device *drm, struct platform_device *pdev,
 	gpu->fast_rate = config->fast_rate;
 	gpu->slow_rate = config->slow_rate;
 	gpu->bus_freq  = config->bus_freq;
-#ifdef CONFIG_MSM_BUS_SCALING
+#ifdef DOWNSTREAM_CONFIG_MSM_BUS_SCALING
 	gpu->bus_scale_table = config->bus_scale_table;
 #endif
 
@@ -337,13 +399,12 @@ int adreno_gpu_init(struct drm_device *drm, struct platform_device *pdev,
 			gpu->fast_rate, gpu->slow_rate, gpu->bus_freq);
 
 	ret = msm_gpu_init(drm, pdev, &adreno_gpu->base, &funcs->base,
-			   adreno_gpu->info->name,
-			   "kgsl_3d0_reg_memory", "kgsl_3d0_irq");
+			adreno_gpu->info->name, "kgsl_3d0_reg_memory", "kgsl_3d0_irq",
+			RB_SIZE);
 	if (ret)
 		return ret;
 
-	ret = request_firmware(&adreno_gpu->pm4,
-			       adreno_gpu->info->pm4fw, drm->dev);
+	ret = request_firmware(&adreno_gpu->pm4, adreno_gpu->info->pm4fw, drm->dev);
 	if (ret) {
 		dev_err(drm->dev, "failed to load %s PM4 firmware: %d\n",
 				adreno_gpu->info->pm4fw, ret);
@@ -404,10 +465,6 @@ void adreno_gpu_cleanup(struct adreno_gpu *gpu)
 	}
 	release_firmware(gpu->pm4);
 	release_firmware(gpu->pfp);
-	if (gpu->pm4_bo)
-		msm_gem_free_object(gpu->pm4_bo);
-	if (gpu->pfp_bo)
-		msm_gem_free_object(gpu->pfp_bo);
 	msm_gpu_cleanup(&gpu->base);
 }
 

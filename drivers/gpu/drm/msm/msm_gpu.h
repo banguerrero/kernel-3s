@@ -114,10 +114,10 @@ struct msm_gpu {
 
 	/* Power Control: */
 	struct regulator *gpu_reg, *gpu_cx;
-	struct clk *ebi1_clk, *grp_clks[8];
+	struct clk *ebi1_clk, *grp_clks[6];
 	uint32_t fast_rate, slow_rate, bus_freq;
 
-#ifdef CONFIG_MSM_BUS_SCALING
+#ifdef DOWNSTREAM_CONFIG_MSM_BUS_SCALING
 	struct msm_bus_scale_pdata *bus_scale_table;
 	uint32_t bsc;
 #endif

@@ -23,9 +23,8 @@
  * Power Management:
  */
 
-#ifdef CONFIG_MSM_BUS_SCALING
-#include <linux/msm-bus.h>
-#include <linux/msm-bus-board.h>
+#ifdef DOWNSTREAM_CONFIG_MSM_BUS_SCALING
+#include <mach/board.h>
 static void bs_init(struct msm_gpu *gpu)
 {
 	if (gpu->bus_scale_table) {
@@ -452,13 +451,6 @@ static void retire_submits(struct msm_gpu *gpu, uint32_t fence)
 	}
 }
 
-static inline uint32_t get_retired_timestamp(struct msm_gpu *gpu)
-{
-	/* For global timestamp, the last retired timestamp
-	 * is the fence of recently completed GPU commands. */
-	return gpu->funcs->last_fence(gpu);
-}
-
 static void retire_worker(struct work_struct *work)
 {
 	struct msm_gpu *gpu = container_of(work, struct msm_gpu, retire_work);
@@ -584,8 +576,7 @@ int msm_gpu_submit(struct msm_gpu *gpu, struct msm_gem_submit *submit,
 
 	inactive_cancel(gpu);
 
-	if (!get_force_submit(priv))
-		list_add_tail(&submit->node, &gpu->submit_list);
+	list_add_tail(&submit->node, &gpu->submit_list);
 
 	msm_rd_dump_submit(submit);
 
@@ -618,10 +609,6 @@ int msm_gpu_submit(struct msm_gpu *gpu, struct msm_gem_submit *submit,
 	}
 
 	ret = gpu->funcs->submit(gpu, submit, ctx);
-	if (get_force_submit(priv) && gpu->funcs->idle(gpu)) {
-		DRM_ERROR("%s: hardware hang\n", __func__);
-		msm_gpu_cmd_dump(gpu, submit);
-	}
 	priv->lastctx = ctx;
 
 	hangcheck_timer_reset(gpu);
@@ -641,8 +628,8 @@ static irqreturn_t irq_handler(int irq, void *data)
 }
 
 static const char *clk_names[] = {
-		"src_clk", "core_clk", "iface_clk", "rbbmtimer_clk",
-		"mem_clk", "mem_iface_clk", "alt_mem_iface_clk", "mx_clk"
+		"src_clk", "core_clk", "iface_clk", "mem_clk", "mem_iface_clk",
+		"alt_mem_iface_clk",
 };
 
 #define RB_SIZE    SZ_32K
@@ -733,14 +720,12 @@ int msm_gpu_init(struct drm_device *drm, struct platform_device *pdev,
 	iommu_domain = iommu_domain_alloc(&platform_bus_type);
 	if (!IS_ERR_OR_NULL(iommu_domain)) {
 		dev_info(drm->dev, "%s: using IOMMU\n", name);
-		gpu->mmu = msm_smmu_new(drm, iommu_dev,
-				MSM_SMMU_DOMAIN_GPU_UNSECURE);
+		gpu->mmu = msm_iommu_new(&pdev->dev, iommu);
 		if (IS_ERR(gpu->mmu)) {
 			ret = PTR_ERR(gpu->mmu);
-			dev_err(drm->dev,
-				"failed to init iommu domain: %d\n", ret);
+			dev_err(drm->dev, "failed to init iommu: %d\n", ret);
 			gpu->mmu = NULL;
-			iommu_domain_free(iommu_domain);
+			iommu_domain_free(iommu);
 			goto fail;
 		}
 

@@ -25,15 +25,6 @@
 
 #define MAX_PLANE	4
 
-/**
- * Device Private DRM Mode Flags
- * drm_mode->private_flags
- */
-/* Connector has interpreted seamless transition request as dynamic fps */
-#define MSM_MODE_FLAG_SEAMLESS_DYNAMIC_FPS	(1<<0)
-/* Transition to new mode requires a wait-for-vblank before the modeset */
-#define MSM_MODE_FLAG_VBLANK_PRE_MODESET	(1<<1)
-
 /* As there are different display controller blocks depending on the
  * snapdragon version, the kms support is split out and the appropriate
  * implementation is loaded at runtime.  The kms module is responsible
@@ -50,26 +41,11 @@ struct msm_kms_funcs {
 	int (*enable_vblank)(struct msm_kms *kms, struct drm_crtc *crtc);
 	void (*disable_vblank)(struct msm_kms *kms, struct drm_crtc *crtc);
 	/* modeset, bracketing atomic_commit(): */
-	void (*prepare_fence)(struct msm_kms *kms,
-			struct drm_atomic_state *state);
-	void (*prepare_commit)(struct msm_kms *kms,
-			struct drm_atomic_state *state);
-	void (*commit)(struct msm_kms *kms, struct drm_atomic_state *state);
-	void (*complete_commit)(struct msm_kms *kms,
-			struct drm_atomic_state *state);
+	void (*prepare_commit)(struct msm_kms *kms, struct drm_atomic_state *state);
+	void (*complete_commit)(struct msm_kms *kms, struct drm_atomic_state *state);
 	/* functions to wait for atomic commit completed on each CRTC */
 	void (*wait_for_crtc_commit_done)(struct msm_kms *kms,
 					struct drm_crtc *crtc);
-	/* get msm_format w/ optional format modifiers from drm_mode_fb_cmd2 */
-	const struct msm_format *(*get_format)(struct msm_kms *kms,
-					const uint32_t format,
-					const uint64_t *modifiers,
-					const uint32_t modifiers_len);
-	/* do format checking on format modified through fb_cmd2 modifiers */
-	int (*check_modified_format)(const struct msm_kms *kms,
-			const struct msm_format *msm_fmt,
-			const struct drm_mode_fb_cmd2 *cmd,
-			struct drm_gem_object **bos);
 	/* misc: */
 	long (*round_pixclk)(struct msm_kms *kms, unsigned long rate,
 			struct drm_encoder *encoder);
@@ -77,7 +53,6 @@ struct msm_kms_funcs {
 			struct drm_encoder *encoder,
 			struct drm_encoder *slave_encoder,
 			bool is_cmd_mode);
-	void (*postopen)(struct msm_kms *kms, struct drm_file *file);
 	/* cleanup: */
 	void (*preclose)(struct msm_kms *kms, struct drm_file *file);
 	void (*destroy)(struct msm_kms *kms);

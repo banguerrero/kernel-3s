@@ -205,14 +205,15 @@ struct drm_framebuffer *msm_framebuffer_init(struct drm_device *dev,
 
 	msm_fb->format = format;
 
-	if (mode_cmd->flags & DRM_MODE_FB_MODIFIERS) {
-		for (i = 0; i < ARRAY_SIZE(mode_cmd->modifier); i++) {
-			if (mode_cmd->modifier[i]) {
-				is_modified = true;
-				break;
-			}
-		}
+	if (n > ARRAY_SIZE(msm_fb->planes)) {
+		ret = -EINVAL;
+		goto fail;
 	}
+
+	for (i = 0; i < n; i++) {
+		unsigned int width = mode_cmd->width / (i ? hsub : 1);
+		unsigned int height = mode_cmd->height / (i ? vsub : 1);
+		unsigned int min_size;
 
 	if (num_planes > ARRAY_SIZE(msm_fb->planes)) {
 		ret = -EINVAL;

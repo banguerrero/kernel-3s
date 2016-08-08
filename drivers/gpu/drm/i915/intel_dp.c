@@ -3921,6 +3921,7 @@ intel_dp_link_down(struct intel_dp *intel_dp)
 		DP |= DP_LINK_TRAIN_PAT_IDLE;
 	}
 	I915_WRITE(intel_dp->output_reg, DP);
+
 	POSTING_READ(intel_dp->output_reg);
 
 	DP &= ~(DP_PORT_EN | DP_AUDIO_OUTPUT_ENABLE);
@@ -4139,6 +4140,67 @@ static int intel_dp_sink_crc_start(struct intel_dp *intel_dp)
 
 	intel_dp->sink_crc.started = true;
 	return 0;
+}
+
+static int intel_dp_sink_crc_stop(struct intel_dp *intel_dp)
+{
+	struct intel_digital_port *dig_port = dp_to_dig_port(intel_dp);
+
+	struct drm_device *dev = dig_port->base.base.dev;
+	struct intel_crtc *intel_crtc = to_intel_crtc(dig_port->base.base.crtc);
+	u8 buf;
+	int count, ret;
+	int attempts = 6;
+	bool old_equal_new;
+
+	ret = intel_dp_sink_crc_start(intel_dp);
+	if (ret)
+		return ret;
+
+	do {
+		intel_wait_for_vblank(dev, intel_crtc->pipe);
+
+		if (drm_dp_dpcd_readb(&intel_dp->aux,
+				      DP_TEST_SINK_MISC, &buf) < 0) {
+			ret = -EIO;
+			goto stop;
+		}
+		count = buf & DP_TEST_COUNT_MASK;
+
+		/*
+		 * Count might be reset during the loop. In this case
+		 * last known count needs to be reset as well.
+		 */
+		if (count == 0)
+			intel_dp->sink_crc.last_count = 0;
+
+		if (drm_dp_dpcd_read(&intel_dp->aux, DP_TEST_CRC_R_CR, crc, 6) < 0) {
+			ret = -EIO;
+			goto stop;
+		}
+
+		old_equal_new = (count == intel_dp->sink_crc.last_count &&
+				 !memcmp(intel_dp->sink_crc.last_crc, crc,
+					 6 * sizeof(u8)));
+
+	} while (--attempts && (count == 0 || old_equal_new));
+
+	intel_dp->sink_crc.last_count = buf & DP_TEST_COUNT_MASK;
+	memcpy(intel_dp->sink_crc.last_crc, crc, 6 * sizeof(u8));
+
+	if (attempts == 0) {
+		if (old_equal_new) {
+			DRM_DEBUG_KMS("Unreliable Sink CRC counter: Current returned CRC is identical to the previous one\n");
+		} else {
+			DRM_ERROR("Panel is unable to calculate any CRC after 6 vblanks\n");
+			ret = -ETIMEDOUT;
+			goto stop;
+		}
+	}
+
+stop:
+	intel_dp_sink_crc_stop(intel_dp);
+	return ret;
 }
 
 int intel_dp_sink_crc(struct intel_dp *intel_dp, u8 *crc)
@@ -4567,6 +4629,7 @@ static bool cpt_digital_port_connected(struct drm_i915_private *dev_priv,
 	}
 
 	return I915_READ(SDEISR) & bit;
+
 }
 
 static bool g4x_digital_port_connected(struct drm_i915_private *dev_priv,
@@ -5014,7 +5077,7 @@ void intel_dp_encoder_destroy(struct drm_encoder *encoder)
 	kfree(intel_dig_port);
 }
 
-static void intel_dp_encoder_suspend(struct intel_encoder *intel_encoder)
+void intel_dp_encoder_suspend(struct intel_encoder *intel_encoder)
 {
 	struct intel_dp *intel_dp = enc_to_intel_dp(&intel_encoder->base);
 
@@ -5031,9 +5094,8 @@ static void intel_dp_encoder_suspend(struct intel_encoder *intel_encoder)
 	pps_unlock(intel_dp);
 }
 
-static void intel_dp_encoder_reset(struct drm_encoder *encoder)
+static void intel_edp_panel_vdd_sanitize(struct intel_dp *intel_dp)
 {
-<<<<<<< HEAD
 	struct intel_digital_port *intel_dig_port = dp_to_dig_port(intel_dp);
 	struct drm_device *dev = intel_dig_port->base.base.dev;
 	struct drm_i915_private *dev_priv = dev->dev_private;
@@ -5080,9 +5142,6 @@ void intel_dp_encoder_reset(struct drm_encoder *encoder)
 	intel_edp_panel_vdd_sanitize(intel_dp);
 
 	pps_unlock(intel_dp);
-=======
-	intel_edp_panel_vdd_sanitize(to_intel_encoder(encoder));
->>>>>>> 84c279d... Squashed revert of DRM changes
 }
 
 static const struct drm_connector_funcs intel_dp_connector_funcs = {
@@ -5695,7 +5754,6 @@ void intel_edp_drrs_invalidate(struct drm_device *dev,
 	struct drm_i915_private *dev_priv = dev->dev_private;
 	struct drm_crtc *crtc;
 	enum pipe pipe;
-
 	if (dev_priv->drrs.type == DRRS_NOT_SUPPORTED)
 		return;
 
@@ -5861,37 +5919,6 @@ intel_dp_drrs_init(struct intel_connector *intel_connector,
 	return downclock_mode;
 }
 
-void intel_edp_panel_vdd_sanitize(struct intel_encoder *intel_encoder)
-{
-	struct drm_device *dev = intel_encoder->base.dev;
-	struct drm_i915_private *dev_priv = dev->dev_private;
-	struct intel_dp *intel_dp;
-	enum intel_display_power_domain power_domain;
-
-	if (intel_encoder->type != INTEL_OUTPUT_EDP)
-		return;
-
-	intel_dp = enc_to_intel_dp(&intel_encoder->base);
-
-	pps_lock(intel_dp);
-
-	if (!edp_have_panel_vdd(intel_dp))
-		goto out;
-	/*
-	 * The VDD bit needs a power domain reference, so if the bit is
-	 * already enabled when we boot or resume, grab this reference and
-	 * schedule a vdd off, so we don't hold on to the reference
-	 * indefinitely.
-	 */
-	DRM_DEBUG_KMS("VDD left on by BIOS, adjusting state tracking\n");
-	power_domain = intel_display_port_power_domain(intel_encoder);
-	intel_display_power_get(dev_priv, power_domain);
-
-	edp_panel_vdd_schedule_off(intel_dp);
- out:
-	pps_unlock(intel_dp);
-}
-
 static bool intel_edp_init_connector(struct intel_dp *intel_dp,
 				     struct intel_connector *intel_connector)
 {
@@ -5910,7 +5937,9 @@ static bool intel_edp_init_connector(struct intel_dp *intel_dp,
 	if (!is_edp(intel_dp))
 		return true;
 
-	intel_edp_panel_vdd_sanitize(intel_encoder);
+	pps_lock(intel_dp);
+	intel_edp_panel_vdd_sanitize(intel_dp);
+	pps_unlock(intel_dp);
 
 	/* Cache DPCD and EDID for edp. */
 	has_dpcd = intel_dp_get_dpcd(intel_dp);

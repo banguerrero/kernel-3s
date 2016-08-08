@@ -170,10 +170,9 @@ static struct page **get_pages(struct drm_gem_object *obj)
 		struct page **p;
 		int npages = obj->size >> PAGE_SHIFT;
 
-		if (use_pages(obj)) {
-			if (!msm_drm_alloc_buf(obj))
-				p = msm_obj->pages;
-		} else {
+		if (use_pages(obj))
+			p = drm_gem_get_pages(obj);
+		else
 			p = get_pages_vram(obj, npages);
 		}
 
@@ -193,8 +192,17 @@ static void put_pages(struct drm_gem_object *obj)
 	struct msm_gem_object *msm_obj = to_msm_bo(obj);
 
 	if (msm_obj->pages) {
+		/* For non-cached buffers, ensure the new pages are clean
+		 * because display controller, GPU, etc. are not coherent:
+		 */
+		if (msm_obj->flags & (MSM_BO_WC|MSM_BO_UNCACHED))
+			dma_unmap_sg(obj->dev->dev, msm_obj->sgt->sgl,
+					msm_obj->sgt->nents, DMA_BIDIRECTIONAL);
+		sg_free_table(msm_obj->sgt);
+		kfree(msm_obj->sgt);
+
 		if (use_pages(obj))
-			msm_drm_free_buf(obj);
+			drm_gem_put_pages(obj, msm_obj->pages, true, false);
 		else {
 			drm_mm_remove_node(msm_obj->vram_node);
 			drm_free_large(msm_obj->pages);
@@ -641,31 +649,9 @@ void msm_gem_free_object(struct drm_gem_object *obj)
 	for (id = 0; id < ARRAY_SIZE(msm_obj->domain); id++) {
 		struct msm_mmu *mmu = priv->mmus[id];
 		if (mmu && msm_obj->domain[id].iova) {
-			if (obj->import_attach && mmu->funcs->unmap_dma_buf) {
-				mmu->funcs->unmap_dma_buf(mmu,
-						msm_obj->domain[id].sgt,
-						obj->import_attach->dmabuf,
-						DMA_BIDIRECTIONAL);
-			} else if (!use_pages(obj)) {
-				uint32_t offset = msm_obj->domain[id].iova;
-
-				mmu->funcs->unmap(mmu, offset,
-					msm_obj->domain[id].sgt);
-			} else {
-				dma_unmap_sg(mmu->dev,
-					msm_obj->domain[id].sgt->sgl,
-					msm_obj->domain[id].sgt->nents,
-					DMA_BIDIRECTIONAL);
-			}
-			msm_obj->domain[id].iova = 0;
+			uint32_t offset = msm_obj->domain[id].iova;
+			mmu->funcs->unmap(mmu, offset, msm_obj->sgt, obj->size);
 		}
-
-		if (msm_obj->domain[id].sgt) {
-			sg_free_table(msm_obj->domain[id].sgt);
-			kfree(msm_obj->domain[id].sgt);
-			msm_obj->domain[id].sgt = NULL;
-		}
-	}
 
 	if (obj->import_attach) {
 		if (msm_obj->vaddr)
@@ -680,10 +666,9 @@ void msm_gem_free_object(struct drm_gem_object *obj)
 			msm_obj->pages = NULL;
 		}
 
-		drm_prime_gem_destroy(obj, msm_obj->import_sgt);
+		drm_prime_gem_destroy(obj, msm_obj->sgt);
 	} else {
-		if (msm_obj->vaddr)
-			vunmap(msm_obj->vaddr);
+		vunmap(msm_obj->vaddr);
 		put_pages(obj);
 	}
 

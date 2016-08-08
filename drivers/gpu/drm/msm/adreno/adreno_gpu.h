@@ -2,7 +2,7 @@
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
- * Copyright (c) 2014,2017 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -27,10 +27,7 @@
 #include "adreno_common.xml.h"
 #include "adreno_pm4.xml.h"
 
-#define ADRENO_REG_UNUSED	0xFFFFFFFF
-#define ADRENO_REG_SKIP	0xFFFFFFFE
 #define REG_ADRENO_DEFINE(_offset, _reg) [_offset] = (_reg) + 1
-
 /**
  * adreno_regs: List of registers that are used in across all
  * 3D devices. Each device type has different offset value for the same
@@ -39,26 +36,21 @@
  */
 enum adreno_regs {
 	REG_ADRENO_CP_DEBUG,
-	REG_ADRENO_CP_CNTL,		/* added in a5 */
 	REG_ADRENO_CP_ME_RAM_WADDR,
 	REG_ADRENO_CP_ME_RAM_DATA,
 	REG_ADRENO_CP_PFP_UCODE_DATA,
 	REG_ADRENO_CP_PFP_UCODE_ADDR,
 	REG_ADRENO_CP_WFI_PEND_CTR,
 	REG_ADRENO_CP_RB_BASE,
-	REG_ADRENO_CP_RB_BASE_HI,	/* added in a5 */
 	REG_ADRENO_CP_RB_RPTR_ADDR,
-	REG_ADRENO_CP_RB_RPTR_ADDR_HI,
 	REG_ADRENO_CP_RB_RPTR,
 	REG_ADRENO_CP_RB_WPTR,
 	REG_ADRENO_CP_PROTECT_CTRL,
 	REG_ADRENO_CP_ME_CNTL,
 	REG_ADRENO_CP_RB_CNTL,
 	REG_ADRENO_CP_IB1_BASE,
-	REG_ADRENO_CP_IB1_BASE_HI,	/* added in a5 */
 	REG_ADRENO_CP_IB1_BUFSZ,
 	REG_ADRENO_CP_IB2_BASE,
-	REG_ADRENO_CP_IB2_BASE_HI,	/* added in a5 */
 	REG_ADRENO_CP_IB2_BUFSZ,
 	REG_ADRENO_CP_TIMESTAMP,
 	REG_ADRENO_CP_ME_RAM_RADDR,
@@ -71,21 +63,14 @@ enum adreno_regs {
 	REG_ADRENO_CP_MEQ_DATA,
 	REG_ADRENO_CP_HW_FAULT,
 	REG_ADRENO_CP_PROTECT_STATUS,
-
-	/* added in a5 */
-	REG_ADRENO_CP_PROTECT_REG_0,
-	REG_ADRENO_CP_PREEMPT,
-	REG_ADRENO_CP_PREEMPT_DEBUG,
-	REG_ADRENO_CP_PREEMPT_DISABLE,
-	REG_ADRENO_CP_CONTEXT_SWITCH_SMMU_INFO_LO,
-	REG_ADRENO_CP_CONTEXT_SWITCH_SMMU_INFO_HI,
+	REG_ADRENO_SCRATCH_ADDR,
+	REG_ADRENO_SCRATCH_UMSK,
+	REG_ADRENO_SCRATCH_REG2,
 	REG_ADRENO_RBBM_STATUS,
-	REG_ADRENO_RBBM_STATUS3,	/* added in a5 */
 	REG_ADRENO_RBBM_PERFCTR_CTL,
 	REG_ADRENO_RBBM_PERFCTR_LOAD_CMD0,
 	REG_ADRENO_RBBM_PERFCTR_LOAD_CMD1,
 	REG_ADRENO_RBBM_PERFCTR_LOAD_CMD2,
-	REG_ADRENO_RBBM_PERFCTR_LOAD_CMD3,	/* added in a5 */
 	REG_ADRENO_RBBM_PERFCTR_PWR_1_LO,
 	REG_ADRENO_RBBM_INT_0_MASK,
 	REG_ADRENO_RBBM_INT_0_STATUS,
@@ -94,11 +79,6 @@ enum adreno_regs {
 	REG_ADRENO_RBBM_AHB_CMD,
 	REG_ADRENO_RBBM_INT_CLEAR_CMD,
 	REG_ADRENO_RBBM_SW_RESET_CMD,
-
-	/* added in a5 */
-	REG_ADRENO_RBBM_BLOCK_SW_RESET_CMD,
-	REG_ADRENO_RBBM_BLOCK_SW_RESET_CMD2,
-
 	REG_ADRENO_RBBM_CLOCK_CTL,
 	REG_ADRENO_RBBM_AHB_ME_SPLIT_STATUS,
 	REG_ADRENO_RBBM_AHB_PFP_SPLIT_STATUS,
@@ -119,43 +99,7 @@ enum adreno_regs {
 	REG_ADRENO_UCHE_INVALIDATE0,
 	REG_ADRENO_RBBM_PERFCTR_LOAD_VALUE_LO,
 	REG_ADRENO_RBBM_PERFCTR_LOAD_VALUE_HI,
-
-	/* added in a5 */
-	REG_ADRENO_RBBM_SECVID_TRUST_CONTROL,
-	REG_ADRENO_RBBM_SECVID_TRUST_CONFIG,
-	REG_ADRENO_RBBM_SECVID_TSB_CONTROL,
-	REG_ADRENO_RBBM_SECVID_TSB_TRUSTED_BASE,
-	REG_ADRENO_RBBM_SECVID_TSB_TRUSTED_BASE_HI,
-	REG_ADRENO_RBBM_SECVID_TSB_TRUSTED_SIZE,
-	REG_ADRENO_RBBM_ALWAYSON_COUNTER_LO,
-	REG_ADRENO_RBBM_ALWAYSON_COUNTER_HI,
-	REG_ADRENO_VBIF_XIN_HALT_CTRL0,
-	REG_ADRENO_VBIF_XIN_HALT_CTRL1,
-	REG_ADRENO_VBIF_VERSION,
-
 	REG_ADRENO_REGISTER_MAX,
-};
-
-enum adreno_version {
-	ADRENO_REV_UNKNOWN = 0,
-	ADRENO_REV_A304 = 304,
-	ADRENO_REV_A305 = 305,
-	ADRENO_REV_A305C = 306,
-	ADRENO_REV_A306 = 307,
-	ADRENO_REV_A306A = 308,
-	ADRENO_REV_A310 = 310,
-	ADRENO_REV_A320 = 320,
-	ADRENO_REV_A330 = 330,
-	ADRENO_REV_A305B = 335,
-	ADRENO_REV_A405 = 405,
-	ADRENO_REV_A418 = 418,
-	ADRENO_REV_A420 = 420,
-	ADRENO_REV_A430 = 430,
-	ADRENO_REV_A505 = 505,
-	ADRENO_REV_A506 = 506,
-	ADRENO_REV_A510 = 510,
-	ADRENO_REV_A530 = 530,
-	ADRENO_REV_A540 = 540,
 };
 
 struct adreno_rev {
@@ -228,8 +172,6 @@ struct adreno_gpu {
 	 * code (a3xx_gpu.c) and stored in this common location.
 	 */
 	const unsigned int *reg_offsets;
-
-	struct adreno_perfcounters *perfcounters;
 };
 #define to_adreno_gpu(x) container_of(x, struct adreno_gpu, base)
 
@@ -238,8 +180,7 @@ struct drmgsl_pwrctl;
 struct adreno_platform_config {
 	struct adreno_rev rev;
 	uint32_t fast_rate, slow_rate, bus_freq;
-	struct msm_iommu iommu;
-#ifdef CONFIG_MSM_BUS_SCALING
+#ifdef DOWNSTREAM_CONFIG_MSM_BUS_SCALING
 	struct msm_bus_scale_pdata *bus_scale_table;
 #endif
 	struct drmgsl_pwrctl *pwrctl;
@@ -287,7 +228,13 @@ static inline int adreno_is_a510(struct adreno_gpu *gpu)
 	return gpu->revn == 510;
 }
 
-static inline int adreno_is_a530(struct adreno_gpu *gpu)
+static inline bool adreno_is_a306(struct adreno_gpu *gpu)
+{
+	/* yes, 307, because a305c is 306 */
+	return gpu->revn == 307;
+}
+
+static inline bool adreno_is_a320(struct adreno_gpu *gpu)
 {
 	return gpu->revn == 530;
 }
@@ -302,23 +249,15 @@ static inline int adreno_is_a530v2(struct adreno_gpu *gpu)
 	return (gpu->revn == 530) && (gpu->rev.patchid == 1);
 }
 
-static inline int adreno_is_a530v3(struct adreno_gpu *gpu)
+static inline bool adreno_is_a4xx(struct adreno_gpu *gpu)
 {
-	return (gpu->revn == 530) && (gpu->rev.patchid == 2);
+	return (gpu->revn >= 400) && (gpu->revn < 500);
 }
 
-static inline int adreno_is_a540(struct adreno_gpu *gpu)
+static inline int adreno_is_a420(struct adreno_gpu *gpu)
 {
-	return gpu->revn == 540;
+	return gpu->revn == 420;
 }
-
-
-static inline int adreno_is_a540v1(struct adreno_gpu *gpu)
-{
-	return (gpu->revn == 540) || (gpu->rev.patchid == 0);
-}
-
-extern bool hang_debug;
 
 int adreno_get_param(struct msm_gpu *gpu, uint32_t param, uint64_t *value);
 int adreno_hw_init(struct msm_gpu *gpu);
@@ -331,16 +270,6 @@ void adreno_idle(struct msm_gpu *gpu);
 #ifdef CONFIG_DEBUG_FS
 void adreno_show(struct msm_gpu *gpu, struct seq_file *m);
 #endif
-int adreno_perfcounter_read(struct msm_gpu *gpu,
-	struct drm_perfcounter_read_group __user *reads, unsigned int count);
-int adreno_perfcounter_query(struct msm_gpu *gpu, unsigned int groupid,
-	unsigned int __user *countables, unsigned int count,
-	unsigned int *max_counters);
-int adreno_perfcounter_msm_get(struct msm_gpu *gpu, unsigned int groupid,
-	unsigned int countable, unsigned int *offset, unsigned int *offset_hi,
-	unsigned int flags);
-int adreno_perfcounter_msm_put(struct msm_gpu *gpu, unsigned int groupid,
-	unsigned int countable, unsigned int flags);
 void adreno_dump_info(struct msm_gpu *gpu);
 void adreno_dump(struct msm_gpu *gpu);
 void adreno_wait_ring(struct msm_gpu *gpu, uint32_t ndwords);
@@ -414,28 +343,6 @@ OUT_PKT3(struct msm_ringbuffer *ring, uint8_t opcode, uint16_t cnt)
 	OUT_RING(ring, cp_pkt3(opcode, cnt));
 }
 
-static inline void
-OUT_PKT4(struct msm_ringbuffer *ring, uint8_t offset, uint16_t cnt)
-{
-	adreno_wait_ring(ring->gpu, cnt+1);
-	OUT_RING(ring, cp_pkt7(offset, cnt));
-}
-
-static inline void
-OUT_PKT7(struct msm_ringbuffer *ring, uint opcode, uint cnt)
-{
-	adreno_wait_ring(ring->gpu, cnt+1);
-	OUT_RING(ring, cp_pkt7(opcode, cnt));
-
-}
-
-static inline void
-OUT_PKT(struct adreno_gpu *device, struct msm_ringbuffer *ring,
-		uint opcode, uint cnt)
-{
-	OUT_RING(ring, cp_pkt(device, opcode, cnt));
-}
-
 /*
  * adreno_checkreg_off() - Checks the validity of a register enum
  * @gpu:		Pointer to struct adreno_gpu
@@ -444,26 +351,11 @@ OUT_PKT(struct adreno_gpu *device, struct msm_ringbuffer *ring,
 static inline bool adreno_reg_check(struct adreno_gpu *gpu,
 		enum adreno_regs offset_name)
 {
-	if (offset_name > REG_ADRENO_REGISTER_MAX) {
-		pr_warn("offset_name:%d\n", offset_name);
-		pr_warn("REG_MAX:%d\n", REG_ADRENO_REGISTER_MAX);
-		goto error;
+	if (offset_name >= REG_ADRENO_REGISTER_MAX ||
+			!gpu->reg_offsets[offset_name]) {
+		BUG();
 	}
-
-	if (!gpu->reg_offsets[offset_name]) {
-		pr_warn("the offset:%d is null!\n", offset_name);
-		goto error;
-	}
-
 	return true;
-error:
-	BUG();
-}
-
-static inline u32 adreno_gpu_off(struct adreno_gpu *gpu,
-		enum adreno_regs offset_name)
-{
-	return gpu->reg_offsets[offset_name];
 }
 
 static inline u32 adreno_gpu_read(struct adreno_gpu *gpu,
@@ -471,8 +363,7 @@ static inline u32 adreno_gpu_read(struct adreno_gpu *gpu,
 {
 	u32 reg = gpu->reg_offsets[offset_name];
 	u32 val = 0;
-
-	if (adreno_reg_check(gpu, offset_name))
+	if(adreno_reg_check(gpu,offset_name))
 		val = gpu_read(&gpu->base, reg - 1);
 	return val;
 }
@@ -481,31 +372,8 @@ static inline void adreno_gpu_write(struct adreno_gpu *gpu,
 		enum adreno_regs offset_name, u32 data)
 {
 	u32 reg = gpu->reg_offsets[offset_name];
-
-	if (adreno_reg_check(gpu, offset_name))
+	if(adreno_reg_check(gpu, offset_name))
 		gpu_write(&gpu->base, reg - 1, data);
-}
-
-
-static inline u64 adreno_gpu_read64(struct adreno_gpu *gpu,
-		enum adreno_regs offset_l,
-		enum adreno_regs offset_h)
-{
-	u32 reg;
-	u32 vall = 0;
-	u32 valh = 0;
-
-	if (adreno_reg_check(gpu, offset_l)) {
-		reg = gpu->reg_offsets[offset_l];
-		vall = gpu_read(&gpu->base, reg - 1);
-	}
-
-	if (adreno_reg_check(gpu, offset_h)) {
-		reg = gpu->reg_offsets[offset_h];
-		valh = gpu_read(&gpu->base, reg - 1);
-	}
-
-	return vall || ((u64)valh << 32);
 }
 
 #endif /* __ADRENO_GPU_H__ */

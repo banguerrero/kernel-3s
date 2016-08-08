@@ -340,8 +340,6 @@ static void submit_cleanup(struct msm_gem_submit *submit, int fail)
 	}
 
 	ww_acquire_fini(&submit->ticket);
-	if (fail)
-		kfree(submit);
 }
 
 int msm_ioctl_gem_submit(struct drm_device *dev, void *data,

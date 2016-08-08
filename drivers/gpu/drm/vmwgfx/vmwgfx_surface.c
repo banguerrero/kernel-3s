@@ -916,14 +916,20 @@ vmw_surface_handle_reference(struct vmw_private *dev_priv,
 			return -EACCES;
 		}
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 3ca605a... drm: backport drm changes from 4.4 kernel to 3.18.
 		if (ACCESS_ONCE(vmw_fpriv(file_priv)->locked_master)) {
 			DRM_ERROR("Locked master refused legacy "
 				  "surface reference.\n");
 			return -EACCES;
 		}
 
+<<<<<<< HEAD
 =======
 >>>>>>> 84c279d... Squashed revert of DRM changes
+=======
+>>>>>>> 3ca605a... drm: backport drm changes from 4.4 kernel to 3.18.
 		handle = u_handle;
 	}
 
@@ -1293,6 +1299,9 @@ int vmw_gb_surface_define_ioctl(struct drm_device *dev, void *data,
 	int ret;
 	uint32_t size;
 	uint32_t backup_handle;
+
+	if (req->multisample_count != 0)
+		return -EINVAL;
 
 	if (unlikely(vmw_user_surface_size == 0))
 		vmw_user_surface_size = ttm_round_pot(sizeof(*user_srf)) +

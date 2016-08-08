@@ -89,7 +89,7 @@ struct drm_msm_gem_new {
 
 struct drm_msm_gem_info {
 	__u32 handle;         /* in */
-	__u32 hint;           /* in, 0: mmap offset; 1: GPU iova */
+	__u32 pad;
 	__u64 offset;         /* out, offset to pass to mmap() */
 };
 
@@ -126,11 +126,7 @@ struct drm_msm_gem_cpu_fini {
  */
 struct drm_msm_gem_submit_reloc {
 	__u32 submit_offset;  /* in, offset from submit_bo */
-#ifdef __cplusplus
-	__u32 or_val;
-#else
 	__u32 or;             /* in, value OR'd with result */
-#endif
 	__s32  shift;          /* in, amount of left shift (can be negative) */
 	__u32 reloc_idx;      /* in, index of reloc_bo buffer */
 	__u64 reloc_offset;   /* in, offset from start of reloc_bo */
@@ -186,15 +182,6 @@ struct drm_msm_gem_submit_bo {
 struct drm_msm_gem_submit {
 	__u32 pipe;           /* in, MSM_PIPE_x */
 	__u32 fence;          /* out */
-	__u32 nr_bos;         /* in, number of submit_bo's */
-	__u32 nr_cmds;        /* in, number of submit_cmd's */
-	__u64 __user bos;     /* in, ptr to array of submit_bo's */
-	__u64 __user cmds;    /* in, ptr to array of submit_cmd's */
-};
-
-struct drm_msm_context_submit {
-	__u32 context_id;     /* in, context id */
-	__u32 timestamp;      /* in, user generated timestamp */
 	__u32 nr_bos;         /* in, number of submit_bo's */
 	__u32 nr_cmds;        /* in, number of submit_cmd's */
 	__u64 __user bos;     /* in, ptr to array of submit_bo's */

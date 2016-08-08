@@ -24,11 +24,6 @@
 /* Additional internal-use only BO flags: */
 #define MSM_BO_STOLEN        0x10000000    /* try to use stolen/splash memory */
 
-struct msm_gem_buf {
-	dma_addr_t dma_addr;
-	struct dma_attrs dma_attrs;
-};
-
 struct msm_gem_object {
 	struct drm_gem_object base;
 	struct msm_gem_buf *buf;
@@ -86,17 +81,16 @@ static inline uint32_t msm_gem_fence(struct msm_gem_object *msm_obj,
 		uint32_t op)
 {
 	uint32_t fence = 0;
-	struct drm_device *dev = msm_obj->base.dev;
 
-	mutex_lock(&dev->struct_mutex);
 	if (op & MSM_PREP_READ)
-		fence = msm_obj->write_timestamp;
+		fence = msm_obj->write_fence;
 	if (op & MSM_PREP_WRITE)
-		fence = max(fence, msm_obj->read_timestamp);
-	mutex_unlock(&dev->struct_mutex);
+		fence = max(fence, msm_obj->read_fence);
 
 	return fence;
 }
+
+#define MAX_CMDS 4
 
 /* Created per submit-ioctl, to track bo's and cmdstream bufs, etc,
  * associated with the cmdstream submission for synchronization (and

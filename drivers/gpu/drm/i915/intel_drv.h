@@ -1203,6 +1203,8 @@ void intel_dp_set_link_params(struct intel_dp *intel_dp,
 void intel_dp_start_link_train(struct intel_dp *intel_dp);
 void intel_dp_stop_link_train(struct intel_dp *intel_dp);
 void intel_dp_sink_dpms(struct intel_dp *intel_dp, int mode);
+void intel_dp_encoder_reset(struct drm_encoder *encoder);
+void intel_dp_encoder_suspend(struct intel_encoder *intel_encoder);
 void intel_dp_encoder_destroy(struct drm_encoder *encoder);
 int intel_dp_sink_crc(struct intel_dp *intel_dp, u8 *crc);
 bool intel_dp_compute_config(struct intel_encoder *encoder,
@@ -1213,7 +1215,6 @@ enum irqreturn intel_dp_hpd_pulse(struct intel_digital_port *intel_dig_port,
 void intel_edp_backlight_on(struct intel_dp *intel_dp);
 void intel_edp_backlight_off(struct intel_dp *intel_dp);
 void intel_edp_panel_vdd_on(struct intel_dp *intel_dp);
-void intel_edp_panel_vdd_sanitize(struct intel_encoder *intel_encoder);
 void intel_edp_panel_on(struct intel_dp *intel_dp);
 void intel_edp_panel_off(struct intel_dp *intel_dp);
 void intel_dp_add_properties(struct intel_dp *intel_dp, struct drm_connector *connector);
