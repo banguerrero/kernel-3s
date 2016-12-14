@@ -4,6 +4,7 @@
  * This code is based on drivers/scsi/ufs/ufshcd.c
  * Copyright (C) 2011-2013 Samsung India Software Operations
  * Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2016 XiaoMi, Inc.
  *
  * Authors:
  *	Santosh Yaraganavi <santosh.sy@samsung.com>
@@ -3998,7 +3999,6 @@ static int ufshcd_link_recovery(struct ufs_hba *hba)
 		flush_work(&hba->eh_work);
 	} while (1);
 
-
 	/*
 	 * we don't know if previous reset had really reset the host controller
 	 * or not. So let's force reset here to be sure.
@@ -6401,7 +6401,6 @@ static int ufshcd_eh_host_reset_handler(struct scsi_cmnd *cmd)
 		err = FAILED;
 		hba->ufshcd_state = UFSHCD_STATE_ERROR;
 	}
-
 	spin_unlock_irqrestore(hba->host->host_lock, flags);
 
 	return err;

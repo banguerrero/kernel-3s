@@ -1,4 +1,5 @@
 /* Copyright (c) 2008-2017, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2016 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -367,9 +368,27 @@ static void kgsl_mem_entry_commit_process(struct kgsl_mem_entry *entry)
 	spin_unlock(&entry->priv->mem_lock);
 }
 
-/*
- * Attach the memory object to a process by (possibly) getting a GPU address and
- * (possibly) mapping it
+
+static void kgsl_mem_entry_commit_process(struct kgsl_mem_entry *entry)
+{
+	if (!entry)
+		return;
+
+	spin_lock(&entry->priv->mem_lock);
+	idr_replace(&entry->priv->mem_idr, entry, entry->id);
+	spin_unlock(&entry->priv->mem_lock);
+}
+
+/**
+ * kgsl_mem_entry_attach_process - Attach a mem_entry to its owner process
+ * @entry: the memory entry
+ * @process: the owner process
+ *
+ * Attach a newly created mem_entry to its owner process so that
+ * it can be found later. The mem_entry will be added to mem_idr and have
+ * its 'id' field assigned.
+ *
+ * @returns - 0 on success or error code on failure.
  */
 static int kgsl_mem_entry_attach_process(struct kgsl_device *device,
 		struct kgsl_process_private *process,
@@ -1924,8 +1943,7 @@ static inline int _check_region(unsigned long start, unsigned long size,
 	return (end > len);
 }
 
-static int check_vma_flags(struct vm_area_struct *vma,
-		unsigned int flags)
+static int check_vma_flags(struct vm_area_struct *vma, unsigned int flags)
 {
 	unsigned long flags_requested = (VM_READ | VM_WRITE);
 
@@ -2095,7 +2113,6 @@ static int kgsl_setup_dmabuf_useraddr(struct kgsl_device *device,
 			up_read(&current->mm->mmap_sem);
 			return ret;
 		}
-
 		/*
 		 * Check to see that this isn't our own memory that we have
 		 * already mapped
@@ -2301,6 +2318,7 @@ long kgsl_ioctl_gpuobj_import(struct kgsl_device_private *dev_priv,
 		entry->memdesc.size);
 
 	trace_kgsl_mem_map(entry, fd);
+	kgsl_mem_entry_commit_process(entry);
 
 	kgsl_mem_entry_commit_process(entry);
 

@@ -99,7 +99,6 @@
 	qcom,chipid = <0x05030002>;
 
 	qcom,bus-width = <32>;
-	qcom,gpu-speed-bin = <0x4130 0xe0000000 29>;
 
 	/* Quirks */
 	qcom,gpu-quirk-two-pass-use-wfi;

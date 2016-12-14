@@ -983,6 +983,7 @@
 		compatible = "qcom,rpm-glink";
 		qcom,glink-edge = "rpm";
 		rpm-channel-name = "rpm_requests";
+		rpm-standalone;
 	};
 
 	glink_mpss: qcom,glink-ssr-modem {
@@ -1840,12 +1841,8 @@
 
 	qcom,spss@1d00000 {
 		compatible = "qcom,pil-tz-generic";
-		reg = <0x1d0101c 0x4>,
-		      <0x1d01024 0x4>,
-		      <0x1d01028 0x4>,
-		      <0x1d0103c 0x4>;
-		reg-names = "sp2soc_irq_status", "sp2soc_irq_clr",
-			    "sp2soc_irq_mask","rmb_err";
+		reg = <0x1d00000 0x20000>;
+		reg-names = "sp_scsr_base";
 		interrupts = <0 352 1>;
 
 		vdd_cx-supply = <&pmcobalt_s1_level>;
@@ -1861,8 +1858,7 @@
 		qcom,pas-id = <14>;
 		qcom,proxy-timeout-ms = <10000>;
 		qcom,firmware-name = "spss";
-		memory-region = <&spss_mem>;
-		qcom,spss-scsr-bits = <0 1 2 3 16 17 24 25>;
+		memory-region = <&peripheral_mem>;
 	};
 
 	qcom,msm-rtb {
@@ -1975,11 +1971,6 @@
 			qcom,dump-node = <&L1_D_103>;
 			qcom,dump-id = <0x87>;
 		};
-	};
-
-	qcom,msm-ssc-sensors {
-		compatible = "qcom,msm-ssc-sensors";
-		status = "ok";
 	};
 
 	qcom,msm-core@780000 {

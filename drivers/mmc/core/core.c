@@ -5,6 +5,7 @@
  *  SD support Copyright (C) 2004 Ian Molton, All Rights Reserved.
  *  Copyright (C) 2005-2008 Pierre Ossman, All Rights Reserved.
  *  MMCv4 support Copyright (C) 2006 Philip Langdale, All Rights Reserved.
+ *  Copyright (C) 2016 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -600,18 +601,21 @@ static int mmc_devfreq_create_freq_table(struct mmc_host *host)
 		pr_debug("%s: frequency table undershot possible freq\n",
 			mmc_hostname(host));
 
-	for (i = 0; i < clk_scaling->freq_table_sz; i++) {
-		if (clk_scaling->freq_table[i] <=
-			host->card->clk_scaling_highest)
-			continue;
-		clk_scaling->freq_table[i] =
-			host->card->clk_scaling_highest;
-		clk_scaling->freq_table_sz = i + 1;
-		pr_debug("%s: frequency table overshot possible freq (%d)\n",
-				mmc_hostname(host), clk_scaling->freq_table[i]);
-		break;
-	}
+	if (strcmp(mmc_hostname(host), "mmc1") == 0) {
+		clk_scaling->freq_table[0] = host->card->clk_scaling_highest;
+	} else {
 
+		for (i = 0; i < clk_scaling->freq_table_sz; i++) {
+			if (clk_scaling->freq_table[i] < host->card->clk_scaling_highest) {
+				continue;
+			} else {
+				break;
+			}
+		}
+		clk_scaling->freq_table[i] = host->card->clk_scaling_highest;
+		clk_scaling->freq_table_sz = i + 1;
+
+	}
 out:
 	clk_scaling->devfreq_profile.freq_table = clk_scaling->freq_table;
 	clk_scaling->devfreq_profile.max_state = clk_scaling->freq_table_sz;
