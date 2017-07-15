@@ -57,11 +57,6 @@ static phys_addr_t tcsr_boot_misc_detect;
 static void scm_disable_sdi(void);
 
 #ifdef CONFIG_MSM_DLOAD_MODE
-/* Runtime could be only changed value once.
-* There is no API from TZ to re-enable the registers.
-* So the SDI cannot be re-enabled when it already by-passed.
-*/
-#ifdef WT_DLOAD_MODE_SUPPORT
 static int download_mode = 1;
 #else
 static int download_mode;
