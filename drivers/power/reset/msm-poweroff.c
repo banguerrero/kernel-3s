@@ -64,7 +64,7 @@ static void scm_disable_sdi(void);
 #ifdef WT_DLOAD_MODE_SUPPORT
 static int download_mode = 1;
 #else
-static const int download_mode;
+static int download_mode;
 #endif
 static struct kobject dload_kobj;
 
