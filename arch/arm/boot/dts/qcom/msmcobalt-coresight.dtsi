@@ -157,22 +157,6 @@
 				};
 			};
 			port@1 {
-				reg = <3>;
-				funnel_in0_in_funnel_spss: endpoint {
-					slave-mode;
-					remote-endpoint =
-						<&funnel_spss_out_funnel_in0>;
-				};
-			};
-			port@2 {
-				reg = <6>;
-				funnel_in0_in_funnel_qatb: endpoint {
-					slave-mode;
-					remote-endpoint =
-						<&funnel_qatb_out_funnel_in0>;
-				};
-			};
-			port@3 {
 				reg = <7>;
 				funnel_in0_in_stm: endpoint {
 					slave-mode;
