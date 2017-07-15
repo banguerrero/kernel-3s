@@ -369,15 +369,7 @@ static void kgsl_mem_entry_commit_process(struct kgsl_mem_entry *entry)
 }
 
 
-static void kgsl_mem_entry_commit_process(struct kgsl_mem_entry *entry)
-{
-	if (!entry)
-		return;
 
-	spin_lock(&entry->priv->mem_lock);
-	idr_replace(&entry->priv->mem_idr, entry, entry->id);
-	spin_unlock(&entry->priv->mem_lock);
-}
 
 /**
  * kgsl_mem_entry_attach_process - Attach a mem_entry to its owner process
