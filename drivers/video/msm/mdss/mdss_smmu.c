@@ -1,5 +1,4 @@
 /* Copyright (c) 2007-2016, The Linux Foundation. All rights reserved.
- * Copyright (C) 2016 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -250,6 +249,7 @@ static int mdss_smmu_detach_v2(struct mdss_data_type *mdata)
 			mdss_smmu_enable_power(mdss_smmu, false);
 	}
 	mutex_unlock(&mdp_iommu_lock);
+
 	return 0;
 }
 
