@@ -643,6 +643,7 @@ int radio_hci_unregister_dev(void)
 	skb_queue_purge(&hdev->rx_q);
 	skb_queue_purge(&hdev->cmd_q);
 	skb_queue_purge(&hdev->raw_q);
+        radio->fm_hdev = NULL;
 
 	radio->fm_hdev = NULL;
 	return 0;
