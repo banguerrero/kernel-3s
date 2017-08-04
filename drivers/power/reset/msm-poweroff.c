@@ -61,7 +61,6 @@ static int download_mode = 1;
 #else
 static int download_mode;
 #endif
-static struct kobject dload_kobj;
 
 #ifdef CONFIG_MSM_DLOAD_MODE
 #define EDL_MODE_PROP "qcom,msm-imem-emergency_download_mode"
