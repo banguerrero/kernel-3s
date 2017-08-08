@@ -319,7 +319,7 @@ static void __init parse_dt_cpu_power(void)
 		 rate = clk_get_rate(clk);
 	 } else {
 	 if (of_property_read_u32(cn, "clock-frequency", &rate)) {
-		 pr_err("%s missing clocks or clock-frequency properties\n",
+		 pr_warn("%s missing clocks or clock-frequency properties\n",
 			 cn->full_name);
 			 continue;
 		 }
