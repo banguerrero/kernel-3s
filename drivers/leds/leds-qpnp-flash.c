@@ -26,10 +26,10 @@
 #include <linux/power_supply.h>
 #include <linux/qpnp/qpnp-adc.h>
 #include <linux/qpnp/qpnp-revid.h>
-#include <linux/leds-qpnp-flash.h>
+#include "leds.h"
 #include <linux/debugfs.h>
 #include <linux/uaccess.h>
-#include "leds.h"
+#include <linux/wakelock.h>
 
 #define FLASH_LED_PERIPHERAL_SUBTYPE(base)			(base + 0x05)
 #define FLASH_SAFETY_TIMER(base)				(base + 0x40)
@@ -80,7 +80,6 @@
 #define FLASH_LED_HDRM_SNS_ENABLE_MASK				0x81
 #define	FLASH_MASK_MODULE_CONTRL_MASK				0xE0
 #define FLASH_FOLLOW_OTST2_RB_MASK				0x08
-#define FLASH_PREPARE_OPTIONS_MASK				0x07
 
 #define FLASH_LED_TRIGGER_DEFAULT				"none"
 #define FLASH_LED_HEADROOM_DEFAULT_MV				500
@@ -190,7 +189,6 @@ struct flash_node_data {
 	u8				trigger;
 	u8				enable;
 	u8				num_regulators;
-	bool				regulators_on;
 	bool				flash_on;
 };
 
@@ -249,6 +247,8 @@ struct qpnp_flash_led {
 	struct workqueue_struct		*ordered_workq;
 	struct qpnp_vadc_chip		*vadc_dev;
 	struct mutex			flash_led_lock;
+	struct wake_lock flashlight_led_lock;
+	struct qpnp_flash_led_buffer	*log;
 	struct dentry			*dbgfs_root;
 	int				num_leds;
 	u16				base;
@@ -1211,9 +1211,6 @@ static int flash_regulator_enable(struct qpnp_flash_led *led,
 {
 	int i, rc = 0;
 
-	if (flash_node->regulators_on == on)
-		return 0;
-
 	if (on == false) {
 		i = flash_node->num_regulators;
 		goto error_regulator_enable;
@@ -1228,71 +1225,12 @@ static int flash_regulator_enable(struct qpnp_flash_led *led,
 		}
 	}
 
-	flash_node->regulators_on = true;
 	return rc;
 
 error_regulator_enable:
 	while (i--)
 		regulator_disable(flash_node->reg_data[i].regs);
 
-	flash_node->regulators_on = false;
-	return rc;
-}
-
-int qpnp_flash_led_prepare(struct led_trigger *trig, int options,
-					int *max_current)
-{
-	struct led_classdev *led_cdev = trigger_to_lcdev(trig);
-	struct flash_node_data *flash_node;
-	struct qpnp_flash_led *led;
-	int rc;
-
-	if (!led_cdev) {
-		pr_err("Invalid led_trigger provided\n");
-		return -EINVAL;
-	}
-
-	flash_node = container_of(led_cdev, struct flash_node_data, cdev);
-	led = dev_get_drvdata(&flash_node->spmi_dev->dev);
-
-	if (!(options & FLASH_PREPARE_OPTIONS_MASK)) {
-		dev_err(&led->spmi_dev->dev, "Invalid options %d\n", options);
-		return -EINVAL;
-	}
-
-	mutex_lock(&led->flash_led_lock);
-
-	if (options & ENABLE_REGULATOR) {
-		rc = flash_regulator_enable(led, flash_node, true);
-		if (rc < 0) {
-			dev_err(&led->spmi_dev->dev,
-				"enable regulator failed, rc=%d\n", rc);
-			goto out;
-		}
-	}
-
-	if (options & DISABLE_REGULATOR) {
-		rc = flash_regulator_enable(led, flash_node, false);
-		if (rc < 0) {
-			dev_err(&led->spmi_dev->dev,
-				"disable regulator failed, rc=%d\n", rc);
-			goto out;
-		}
-	}
-
-	if (options & QUERY_MAX_CURRENT) {
-		rc = qpnp_flash_led_get_max_avail_current(flash_node, led);
-		if (rc < 0) {
-			dev_err(&led->spmi_dev->dev,
-				"query max current failed, rc=%d\n", rc);
-			goto out;
-		}
-		*max_current = rc;
-		rc = 0;
-	}
-
-out:
-	mutex_unlock(&led->flash_led_lock);
 	return rc;
 }
 
@@ -1315,6 +1253,10 @@ static void qpnp_flash_led_work(struct work_struct *work)
 	mutex_lock(&flash_node->cdev.led_access);
 
 	brightness = flash_node->cdev.brightness;
+
+	dev_dbg(&led->spmi_dev->dev, "wt flash_node.cdev.name=%s\n",
+		flash_node->cdev.name);
+
 	if (!brightness)
 		goto turn_off;
 
@@ -1866,6 +1808,7 @@ error_enable_gpio:
 	return;
 }
 
+extern int32_t wt_flash_flashlight(bool boolean);
 static void qpnp_flash_led_brightness_set(struct led_classdev *led_cdev,
 						enum led_brightness value)
 {
@@ -1883,8 +1826,24 @@ static void qpnp_flash_led_brightness_set(struct led_classdev *led_cdev,
 		value = flash_node->cdev.max_brightness;
 
 	flash_node->cdev.brightness = value;
-	if (led->flash_node[led->num_leds - 1].id ==
-						FLASH_LED_SWITCH) {
+
+	pr_debug
+	    ("WT flash_node.cdev.name=%s,brightness=%d,id=%d,flash_node->type=%d\n",
+	     flash_node->cdev.name, flash_node->cdev.brightness, flash_node->id,
+	     flash_node->type);
+
+	if (!strcmp(flash_node->cdev.name, "flashlight")) {
+		pr_info("wt_flash_flashlight  enter value=%d\n", value);
+		if (value > 0) {
+			wt_flash_flashlight(true);
+			wake_lock(&led->flashlight_led_lock);
+		} else {
+			wt_flash_flashlight(false);
+			wake_unlock(&led->flashlight_led_lock);
+		}
+	}
+
+	if (led->flash_node[led->num_leds - 1].id == FLASH_LED_SWITCH) {
 		if (flash_node->type == TORCH)
 			led->flash_node[led->num_leds - 1].type = TORCH;
 		else if (flash_node->type == FLASH)
@@ -2571,6 +2530,7 @@ static int qpnp_flash_led_probe(struct spmi_device *spmi)
 	}
 
 	mutex_init(&led->flash_led_lock);
+	wake_lock_init(&led->flashlight_led_lock, WAKE_LOCK_SUSPEND, "flashlight_led_lock_wt");
 
 	led->ordered_workq = alloc_ordered_workqueue("flash_led_workqueue", 0);
 	if (!led->ordered_workq) {
@@ -2656,6 +2616,7 @@ static int qpnp_flash_led_probe(struct spmi_device *spmi)
 			if (rc)
 				goto error_led_register;
 		}
+
 		i++;
 	}
 
@@ -2710,6 +2671,7 @@ error_led_register:
 		led_classdev_unregister(&led->flash_node[i].cdev);
 	}
 	mutex_destroy(&led->flash_led_lock);
+	wake_lock_destroy(&led->flashlight_led_lock);
 	destroy_workqueue(led->ordered_workq);
 
 	return rc;
@@ -2735,6 +2697,7 @@ static int qpnp_flash_led_remove(struct spmi_device *spmi)
 	}
 	debugfs_remove_recursive(led->dbgfs_root);
 	mutex_destroy(&led->flash_led_lock);
+	wake_lock_destroy(&led->flashlight_led_lock);
 	destroy_workqueue(led->ordered_workq);
 
 	return 0;
