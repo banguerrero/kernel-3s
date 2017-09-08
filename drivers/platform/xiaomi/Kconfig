@@ -12,6 +12,12 @@ config MACH_XIAOMI_MSM8937
 	help
 	  Support for MSM8937 Xiaomi variants
 
+config MACH_XIAOMI_MSM8917
+	bool "Xiaomi MSM8917"
+	depends on ARCH_MSM8917
+	help
+	  Support for MSM8917 Xiaomi variants
+
 menu "Xiaomi board selection"
 
 config MACH_XIAOMI_MIDO
@@ -25,5 +31,11 @@ config MACH_XIAOMI_LAND
 	select MACH_XIAOMI_MSM8937
 	help
 	  Support for Redmi 3s/x Land
+
+config MACH_XIAOMI_ROLEX
+	bool "Mido board"
+	select MACH_XIAOMI_MSM8917
+	help
+	  Support for Redmi 4a Rolex
 
 endmenu
