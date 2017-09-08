@@ -23,6 +23,7 @@
 
 #define MAX_ISP_V4l2_EVENTS 100
 #define MAX_ISP_REG_LIST 100
+
 static DEFINE_MUTEX(bandwidth_mgr_mutex);
 static struct msm_isp_bandwidth_mgr isp_bandwidth_mgr;
 
@@ -101,7 +102,6 @@ void msm_isp_print_fourcc_error(const char *origin, uint32_t fourcc_format)
 int msm_isp_init_bandwidth_mgr(enum msm_isp_hw_client client)
 {
 	int rc = 0;
-	uint32_t count = 0;
 	mutex_lock(&bandwidth_mgr_mutex);
 	isp_bandwidth_mgr.client_info[client].active = 1;
 	if (isp_bandwidth_mgr.use_count++) {
@@ -813,6 +813,7 @@ static int msm_isp_set_dual_HW_master_slave_mode(
 static int msm_isp_proc_cmd_list_unlocked(struct vfe_device *vfe_dev, void *arg)
 {
 	int rc = 0;
+	uint32_t count = 0;
 	struct msm_vfe_cfg_cmd_list *proc_cmd =
 		(struct msm_vfe_cfg_cmd_list *)arg;
 	struct msm_vfe_cfg_cmd_list cmd, cmd_next;
