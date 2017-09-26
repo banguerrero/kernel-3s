@@ -1520,6 +1520,10 @@ struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 	struct snd_soc_card *card = &snd_soc_card_msm_card;
 	struct snd_soc_dai_link *msm8952_dai_links = NULL;
 	int num_links, ret, len1, len2, len3, len4 = 0;
+<<<<<<< HEAD
+=======
+	bool albus_hw = false;
+>>>>>>> 5837f9eadaa3... Fix uninitialized variables
 	enum codec_variant codec_ver = 0;
 	const char *tasha_lite[NUM_OF_TASHA_LITE_DEVICE] = {
 		"msm8952-tashalite-snd-card",

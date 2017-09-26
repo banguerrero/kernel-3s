@@ -967,10 +967,17 @@ wait:
 
 static int fg_release_access(struct fg_chip *chip)
 {
+<<<<<<< HEAD
 	int rc;
 
 	rc = fg_masked_write(chip, MEM_INTF_CFG(chip),
 			RIF_MEM_ACCESS_REQ, 0, 1);
+=======
+	int rc = 0;
+	if (!chip->shutdown_in_process)
+		rc = fg_masked_write(chip, MEM_INTF_CFG(chip),
+				     RIF_MEM_ACCESS_REQ, 0, 1);
+>>>>>>> 5837f9eadaa3... Fix uninitialized variables
 	fg_relax(&chip->memif_wakeup_source);
 	reinit_completion(&chip->sram_access_granted);
 
