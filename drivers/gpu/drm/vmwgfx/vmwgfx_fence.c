@@ -1123,6 +1123,7 @@ int vmw_fence_event_ioctl(struct drm_device *dev, void *data,
 			bool existed;
 
 			ret = ttm_ref_object_add(vmw_fp->tfile, base,
+//			ret = ttm_ref_object_add(tfile, base,
 						 TTM_REF_USAGE, &existed);
 			if (unlikely(ret != 0)) {
 				DRM_ERROR("Failed to reference a fence "
