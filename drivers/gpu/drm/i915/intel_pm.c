@@ -2818,8 +2818,6 @@ void skl_ddb_get_hw_state(struct drm_i915_private *dev_priv,
 	int plane;
 	u32 val;
 
-	memset(active, 0, sizeof(*active));
-
 	active->pipe_enabled = intel_crtc_active(crtc);
 
 	for_each_pipe(dev_priv, pipe) {
