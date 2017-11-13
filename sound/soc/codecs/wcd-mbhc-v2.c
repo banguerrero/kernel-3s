@@ -551,13 +551,7 @@ static void wcd_mbhc_hs_elec_irq(struct wcd_mbhc *mbhc, int irq_type,
 static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 				enum snd_jack_types jack_type)
 {
-<<<<<<< HEAD
-=======
-	struct snd_soc_codec *codec = mbhc->codec;
-	bool is_pa_on = false;
 
-	u16 elect_result = 0;
->>>>>>> 5837f9eadaa3... Fix uninitialized variables
 	WCD_MBHC_RSC_ASSERT_LOCKED(mbhc);
 
 	pr_debug("%s: enter insertion %d hph_status %x\n",

@@ -414,7 +414,7 @@ int msm_isp_axi_check_stream_state(
 	struct msm_vfe_axi_stream_cfg_cmd *stream_cfg_cmd)
 {
 	int rc = 0, i;
-	unsigned long flags;
+	unsigned long flags = 0;
 	struct msm_vfe_axi_shared_data *axi_data = &vfe_dev->axi_data;
 	struct msm_vfe_axi_stream *stream_info;
 	enum msm_vfe_axi_state valid_state =
@@ -1540,7 +1540,7 @@ static int msm_isp_cfg_ping_pong_address(struct vfe_device *vfe_dev,
 	dma_addr_t paddr;
 	struct dual_vfe_resource *dual_vfe_res = NULL;
 	uint32_t vfe_id = 0;
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	if (stream_idx >= VFE_AXI_SRC_MAX) {
 		pr_err("%s: Invalid stream_idx", __func__);
@@ -1699,8 +1699,8 @@ static int msm_isp_process_done_buf(struct vfe_device *vfe_dev,
 	struct msm_vfe_axi_stream *stream_info, struct msm_isp_buffer *buf,
 	struct timeval *time_stamp, uint32_t frame_id)
 {
-	int rc, ret;
-	unsigned long flags;
+	int rc = 0, ret = 0;
+	unsigned long flags = 0;
 	struct msm_isp_event_data buf_event;
 	uint32_t stream_idx = HANDLE_TO_IDX(stream_info->stream_handle);
 	uint32_t buf_src;
@@ -1830,7 +1830,7 @@ int msm_isp_drop_frame(struct vfe_device *vfe_dev,
 {
 	struct msm_isp_buffer *done_buf = NULL;
 	uint32_t pingpong_status;
-	unsigned long flags;
+	unsigned long flags = 0;
 	struct msm_isp_bufq *bufq = NULL;
 	uint32_t pingpong_bit;
 
@@ -1990,7 +1990,7 @@ static int msm_isp_axi_wait_for_cfg_done(struct vfe_device *vfe_dev,
 	uint32_t src_mask, int regUpdateCnt)
 {
 	int rc;
-	unsigned long flags;
+	unsigned long flags = 0;
 	enum msm_vfe_input_src i = 0;
 	spin_lock_irqsave(&vfe_dev->shared_data_lock, flags);
 

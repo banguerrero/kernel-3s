@@ -3766,8 +3766,8 @@ void get_capacity_disable_charging(struct smbchg_chip *chip)
 {
 	char *boardid_string = NULL;
 	char boardid_start[32] = " ";
-	int India_0;
-	int India_1;
+	int India_0 = 0;
+	int India_1 = 0;
 
 	boardid_string = strstr(saved_command_line, "board_id=");
 
