@@ -2061,8 +2061,13 @@ struct msm_mctl_set_sdev_data {
 #define VIDIOC_MSM_AXI_BUF_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 22, void *)
 
+#ifdef CONFIG_LAND_CAMERA
+#define VIDIOC_MSM_AXI_RDI_COUNT_UPDATE \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 23, struct rdi_count_msg)
+#else
 #define VIDIOC_MSM_AXI_RDI_COUNT_UPDATE \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 23, void *)
+#endif
 
 #define VIDIOC_MSM_VFE_INIT \
 	_IO('V', BASE_VIDIOC_PRIVATE + 24)
