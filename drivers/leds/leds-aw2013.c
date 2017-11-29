@@ -64,6 +64,8 @@ struct aw2013_led {
 	bool poweron;
 };
 
+u8 tp_color;
+
 static int aw2013_write(struct aw2013_led *led, u8 reg, u8 val)
 {
 	return i2c_smbus_write_byte_data(led->client, reg, val);

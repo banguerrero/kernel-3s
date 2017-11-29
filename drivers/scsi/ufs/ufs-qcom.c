@@ -1414,12 +1414,8 @@ static void __ufs_qcom_pm_qos_req_end(struct ufs_qcom_host *host, int req_cpu)
 static void ufs_qcom_pm_qos_req_end(struct ufs_hba *hba, struct request *req,
 	bool should_lock)
 {
-<<<<<<< HEAD
-	unsigned long flags;
-=======
+
 	unsigned long flags = 0;
-	struct ufs_qcom_host *host;
->>>>>>> a90dbfbd88b0... ANDROID: fix uninitilized variable
 
 	if (!hba || !req)
 		return;

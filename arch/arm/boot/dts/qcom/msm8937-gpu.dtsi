@@ -98,11 +98,10 @@
 
 		/*  Quirks  */
 		qcom,gpu-quirk-two-pass-use-wfi;
-<<<<<<< HEAD
+        /*maybe i need to remove this to
 		qcom,gpu-quirk-dp2clockgating-disable;
 		qcom,gpu-quirk-lmloadkill-disable;
-=======
->>>>>>> 7eaa912... regenerate defconfig
+		/* here */
 
 		/* Trace bus */
 		coresight-id = <67>;
@@ -112,7 +111,7 @@
 		coresight-child-list = <&funnel_mm>;
 		coresight-child-ports = <6>;
 
-<<<<<<< HEAD
+        /*maybe i need to remove from here */
 		/* Enable context aware freq. scaling */
 		qcom,enable-ca-jump;
 
@@ -142,8 +141,7 @@
 			};
 		};
 
-=======
->>>>>>> 7eaa912... regenerate defconfig
+        /*to here */
 		/* Power levels */
 		qcom,gpu-pwrlevels {
 			#address-cells = <1>;
